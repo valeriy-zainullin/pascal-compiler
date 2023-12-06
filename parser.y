@@ -574,7 +574,7 @@ Expression:           SimpleExpression {
                       }
 |                     SimpleExpression Relation SimpleExpression {
                           // start_expr; Op: rel, rhs_expr
-                          $$ = pas::ast::Expr(std::move($1), pas::ast::Expr::Op(std::move($2), std::move($3)));
+                          $$ = pas::ast::Expr(std::move($1), pas::ast::Expr::Op{std::move($2), std::move($3)});
                       }
 ;
 SimpleExpression:     UnaryOperatorOpt TermList {

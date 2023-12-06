@@ -1,11 +1,13 @@
 program Hello;
+var lib_token, printf_token : Integer;
 begin
-	LibraryLoad("glibc.so");
+	lib_token := LibraryLoad("glibc.so");
+  printf_token := LibraryFind(lib_token, "printf");
   if 2 + 2 = 4 then
-		LibraryCall("printf", "Yahoo!");
+		LibraryCall(printf_token, "Yahoo!");
     if 2 + 1 = 4 then
-       LibraryCall("printf", "I got that summertime, summertime sadness..")
+       LibraryCall(printf_token, "I got that summertime, summertime sadness..")
 	else
-		LibraryCall("printf", "I'm all geared up!");
-	LibraryUnLoad("glibc.so");
+		LibraryCall(printf_token, "I'm all geared up!");
+	LibraryUnload(lib_token);
 end.

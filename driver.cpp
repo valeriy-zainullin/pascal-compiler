@@ -1,6 +1,7 @@
 #include "driver.hh"
 #include "parser.hh"
-#include "sema.hpp"
+// #include "sema.hpp"
+#include "visitor.hpp"
 
 Driver::Driver()
     : trace_parsing(false), trace_scanning(false), location_debug(false),
@@ -25,6 +26,9 @@ bool Driver::parse(const std::string &f) {
   scan_end();
 
   assert(ast_.has_value());
+
+  pas::visitor::Printer printer;
+  printer.visit(ast_.value());
 
   return true;
 }
