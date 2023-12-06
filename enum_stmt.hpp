@@ -1,0 +1,8 @@
+FOR_EACH_STMT(::pas::ast::Assignment, ::pas::ast::StmtKind::Assignment)
+FOR_EACH_STMT(::pas::ast::ProcCall,   ::pas::ast::StmtKind::ProcCall)
+FOR_EACH_STMT(::pas::ast::IfStmt,     ::pas::ast::StmtKind::If)
+FOR_EACH_STMT(::pas::ast::CaseStmt,   ::pas::ast::StmtKind::Case)
+FOR_EACH_STMT(::pas::ast::WhileStmt,  ::pas::ast::StmtKind::While)
+FOR_EACH_STMT(::pas::ast::RepeatStmt, ::pas::ast::StmtKind::Repeat)
+FOR_EACH_STMT(::pas::ast::ForStmt,    ::pas::ast::StmtKind::For)
+FOR_EACH_STMT(::pas::ast::MemoryStmt, ::pas::ast::StmtKind::Memory)

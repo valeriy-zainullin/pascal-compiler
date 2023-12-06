@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.12)
 
+add_compile_options("-g")
+
 project(PascalInterpreter)
+
+set(CMAKE_CXX_STANDARD 20)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1) # For clang-format.
 
 find_package(FLEX  2.6 REQUIRED)
 find_package(BISON 2.6 REQUIRED)
@@ -34,7 +40,11 @@ add_executable(
 
     main.cpp
     driver.cpp
+    ast.cpp
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}
 )
-target_include_directories(pascal PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+
+add_custom_target(test COMMAND pascal ${CMAKE_CURRENT_LIST_DIR}/test.pas)
+
+target_include_directories(pascal PRIVATE ${CMAKE_CURRENT_LIST_DIR} -p -s -l ${CMAKE_CURRENT_BINARY_DIR})
