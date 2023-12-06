@@ -22,7 +22,7 @@ class Expr;
 using ExprUP = std::unique_ptr<Expr>;
 
 class DesignatorFieldAccess {
-  public: DesignatorFieldAccess() = default;
+  public:  DesignatorFieldAccess() = default;   DesignatorFieldAccess(DesignatorFieldAccess&& other) = default; DesignatorFieldAccess& operator=(DesignatorFieldAccess&& other) = default; 
 
 public:
   DesignatorFieldAccess(std::string ident) : ident_(std::move(ident)) {}
@@ -31,7 +31,7 @@ private:
   std::string ident_;
 };
 class DesignatorArrayAccess {
-  public: DesignatorArrayAccess() = default;
+  public:  DesignatorArrayAccess() = default;   DesignatorArrayAccess(DesignatorArrayAccess&& other) = default; DesignatorArrayAccess& operator=(DesignatorArrayAccess&& other) = default; 
 
 public:
   DesignatorArrayAccess(std::vector<ExprUP> expr_list)
@@ -41,7 +41,7 @@ private:
   std::vector<ExprUP> expr_list_;
 };
 class DesignatorPointerAccess {
-  public: DesignatorPointerAccess() = default;
+  public:  DesignatorPointerAccess() = default;   DesignatorPointerAccess(DesignatorPointerAccess&& other) = default; DesignatorPointerAccess& operator=(DesignatorPointerAccess&& other) = default; 
 };
 
 enum class DesignatorItemKind {
@@ -53,7 +53,7 @@ enum class DesignatorItemKind {
 using DesignatorItem = std::variant<DesignatorFieldAccess, DesignatorArrayAccess, DesignatorPointerAccess>;
 
 class Designator {
-  public: Designator() = default;
+  public:  Designator() = default;   Designator(Designator&& other) = default; Designator& operator=(Designator&& other) = default; 
 
 public:
   Designator(std::string ident,
@@ -85,7 +85,7 @@ using FuncCallUP = std::unique_ptr<FuncCall>;
 using Factor = std::variant<std::string, int, bool, std::monostate, Designator, ExprUP, NegationUP, FuncCallUP>;
 
 class Negation {
-  public: Negation() = default;
+  public:  Negation() = default;   Negation(Negation&& other) = default; Negation& operator=(Negation&& other) = default; 
 
 public:
   Negation(Factor factor)
@@ -97,7 +97,7 @@ private:
 
 
 class Term {
-  public: Term() = default;
+  public:  Term() = default;   Term(Term&& other) = default; Term& operator=(Term&& other) = default; 
 
 public:
   struct Op {
@@ -114,7 +114,7 @@ private:
 };
 
 class SimpleExpr {
-  public: SimpleExpr() = default;
+  public:  SimpleExpr() = default;   SimpleExpr(SimpleExpr&& other) = default; SimpleExpr& operator=(SimpleExpr&& other) = default; 
 
 public:
   struct Op {
@@ -134,7 +134,7 @@ private:
 };
 
 class Expr {
-  public: Expr() = default;
+  public:  Expr() = default;   Expr(Expr&& other) = default; Expr& operator=(Expr&& other) = default; 
 
 public:
   struct Op {
@@ -160,7 +160,7 @@ private:
 //   evaluation should become a statement
 //   then.
 class FuncCall {
-  public: FuncCall() = default;
+  public:  FuncCall() = default;   FuncCall(FuncCall&& other) = default; FuncCall& operator=(FuncCall&& other) = default; 
 
 public:
   FuncCall(std::string func_ident, std::vector<Expr> params)

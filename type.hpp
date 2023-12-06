@@ -26,7 +26,7 @@ enum class TypeKind { Set = 0, Array = 1, Pointer = 2, Record = 3, Named = 4 };
 using Type = std::variant<SetTypeUP, ArrayTypeUP, PointerTypeUP, RecordTypeUP, NamedTypeUP>;
 
 class Subrange {
-    public: Subrange() = default;
+    public:  Subrange() = default;   Subrange(Subrange&& other) = default; Subrange& operator=(Subrange&& other) = default; 
 
   public:
     Subrange(ConstFactor start, ConstFactor finish)
@@ -38,7 +38,7 @@ class Subrange {
 };
 
 class SetType {
-    public: SetType() = default;
+    public:  SetType() = default;   SetType(SetType&& other) = default; SetType& operator=(SetType&& other) = default; 
 
   public:
     SetType(Subrange subrange) : subrange_(std::move(subrange)) {}
@@ -48,7 +48,7 @@ class SetType {
 };
 
 class ArrayType {
-    public: ArrayType() = default;
+    public:  ArrayType() = default;   ArrayType(ArrayType&& other) = default; ArrayType& operator=(ArrayType&& other) = default; 
 
   public:
     ArrayType(std::vector<Subrange> subrange_list,
@@ -61,7 +61,7 @@ class ArrayType {
 };
 
 class PointerType {
-    public: PointerType() = default;
+    public:  PointerType() = default;   PointerType(PointerType&& other) = default; PointerType& operator=(PointerType&& other) = default; 
 
   public:
     PointerType(std::string ref_type_name)
@@ -72,7 +72,7 @@ class PointerType {
 };
 
 class FieldList {
-  public: FieldList() = default;
+  public:  FieldList() = default;   FieldList(FieldList&& other) = default; FieldList& operator=(FieldList&& other) = default; 
 
 public:
   FieldList(std::vector<std::string> idents, Type type) : idents_(std::move(idents)), type_(std::move(type)) {}
@@ -83,7 +83,7 @@ private:
 };
 
 class RecordType {
-    public: RecordType() = default;
+    public:  RecordType() = default;   RecordType(RecordType&& other) = default; RecordType& operator=(RecordType&& other) = default; 
 
   public:
     RecordType(std::vector<FieldList> field)
@@ -96,7 +96,7 @@ class RecordType {
 // An already defined type, which is referenced
 //   by a corresponding identifier.
 class NamedType {
-    public: NamedType() = default;
+    public:  NamedType() = default;   NamedType(NamedType&& other) = default; NamedType& operator=(NamedType&& other) = default; 
 
   public:
     NamedType(std::string type_name) : type_name_(std::move(type_name)) {}

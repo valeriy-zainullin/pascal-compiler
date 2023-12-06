@@ -241,6 +241,7 @@ ProgramModule:        PROGRAM identifier ProgramParametersOpt ";" Block "." {
 ProgramParametersOpt: ProgramParameters | %empty;
 ProgramParameters:    "(" IdentList ")";
 IdentList:            identifier {
+                          // Dunno, why in this case it works and in others it doesn't!
                           $$ = std::vector<std::string>({std::move($1)});
                       }
 |                     identifier "," IdentList {
@@ -286,7 +287,8 @@ ConstantDefBlock:     CONST ConstantDefList {
                           $$ = std::move($2);
                       };
 ConstantDefList:      ConstantDef ";" {
-                          $$ = std::vector<pas::ast::ConstDef>({std::move($1)});
+                          $$ = std::vector<pas::ast::ConstDef>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     ConstantDef ";" ConstantDefList {
                           // If profiling will show that this takes time,
@@ -309,7 +311,8 @@ TypeDefList:          TypeDef ";" {
                           //   So for C-like objects without user-defined constructors,
                           //   it's just C-like field initialization.
                           // I'll use parenthesis, it's more usual for me..
-                          $$ = std::vector<pas::ast::TypeDef>({std::move($1)});
+                          $$ = std::vector<pas::ast::TypeDef>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     TypeDef ";" TypeDefList {
                           $$ = std::move($3);
@@ -319,7 +322,8 @@ VariableDeclBlock:    VAR VariableDeclList {
                           $$ = std::move($2);
                       };
 VariableDeclList:     VariableDecl ";" {
-                          $$ = std::vector<pas::ast::VarDecl>({std::move($1)});
+                          $$ = std::vector<pas::ast::VarDecl>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     VariableDecl ";" VariableDeclList {
                           $$ = std::move($3);
@@ -384,7 +388,8 @@ ArrayType:            ARRAY "[" SubrangeList "]" OF Type {
                           $$ = pas::ast::ArrayType(std::move($3), std::move($6));
                       };
 SubrangeList:         Subrange {
-                          $$ = std::vector<pas::ast::Subrange>({std::move($1)});
+                          $$ = std::vector<pas::ast::Subrange>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     Subrange "," SubrangeList {
                           $$ = std::move($3);
@@ -408,7 +413,8 @@ PointerType:          "^" identifier {
                           $$ = pas::ast::PointerType(std::move($2));
                       };
 FieldListSequence:    FieldList {
-                          $$ = std::vector<pas::ast::FieldList>({std::move($1)});
+                          $$ = std::vector<pas::ast::FieldList>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     FieldList ";" FieldListSequence {
                           $$ = std::move($3);
@@ -422,10 +428,11 @@ StatementSequence:    BEGIN StatementList END {
                           $$ = std::move($2);
                       };
 StatementList:        Statement {
-                          $$ = std::vector<pas::ast::Stmt>({std::move($1)});
+                          $$ = std::vector<pas::ast::Stmt>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     Statement ";" StatementList {
-                          $$ = std::vector<pas::ast::Stmt>({std::move($3)});
+                          $$ = std::move($3);
                           $$.insert($$.begin(), std::move($1));
                       };
 Statement:            Assignment {
@@ -480,7 +487,8 @@ CaseStatement:        CASE Expression OF CaseList END {
                           $$ = pas::ast::CaseStmt(std::move($2), std::move($4));
                       };
 CaseList:             Case {
-                          $$ = std::vector<pas::ast::Case>({std::move($1)});
+                          $$ = std::vector<pas::ast::Case>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     Case ";" CaseList {
                           $$ = std::move($3);
@@ -490,7 +498,8 @@ Case:                 CaseLabelList ":" Statement {
                           $$ = pas::ast::Case(std::move($1), std::move($3));
                       };
 CaseLabelList:        ConstExpression {
-                          $$ = std::vector<pas::ast::ConstExpr>({std::move($1)});
+                          $$ = std::vector<pas::ast::ConstExpr>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     ConstExpression "," CaseLabelList {
                           $$ = std::move($3);
@@ -521,7 +530,8 @@ DesignatorStuffOpt:   DesignatorStuff {
                           $$ = std::vector<pas::ast::DesignatorItem>();
                       };
 DesignatorStuff:      DesignatorItem {
-                          $$ = std::vector<pas::ast::DesignatorItem>({std::move($1)});
+                          $$ = std::vector<pas::ast::DesignatorItem>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     DesignatorItem DesignatorStuff {
                           $$ = std::move($2);
@@ -544,7 +554,8 @@ ActualParameters:     "(" ExpList ")" {
                           $$ = std::move($2);
                       };
 ExpList:              Expression {
-                          $$ = std::vector<pas::ast::Expr>({std::move($1)});
+                          $$ = std::vector<pas::ast::Expr>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     Expression "," ExpList {
                           $$ = std::move($3);
@@ -580,7 +591,8 @@ SimpleExpression:     UnaryOperatorOpt TermList {
                           $$ = pas::ast::SimpleExpr(std::move($1), std::move(term), std::move(expr_ops));
                       };
 TermList:             Term {
-                          $$ = std::make_pair(std::vector<pas::ast::Term>({std::move($1)}), std::vector<pas::ast::AddOp>());
+                          $$ = std::make_pair(std::vector<pas::ast::Term>(), std::vector<pas::ast::AddOp>());
+                          $$.first.emplace_back(std::move($1));
                       }
 |                     Term AddOperator TermList {
                           $$ = std::move($3);
@@ -601,7 +613,8 @@ Term:                 FactorList {
                           $$ = pas::ast::Term(std::move(factor), std::move(term_ops));
                       };
 FactorList:           Factor {
-                          $$ = std::make_pair(std::vector<pas::ast::Factor>({std::move($1)}), std::vector<pas::ast::MultOp>());
+                          $$ = std::make_pair(std::vector<pas::ast::Factor>(), std::vector<pas::ast::MultOp>());
+                          $$.first.emplace_back(std::move($1));
                       }
 |                     Factor MultOperator FactorList {
                           $$ = std::move($3);
@@ -649,7 +662,8 @@ ElementListOpt:       ElementList {
                           $$ = std::vector<pas::ast::Element>();
                       };
 ElementList:          Element {
-                          $$ = std::vector<pas::ast::Element>({std::move($1)});
+                          $$ = std::vector<pas::ast::Element>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     Element "," ElementList {
                           $$ = std::move($3);
@@ -666,7 +680,8 @@ Element:              ConstExpression {
                       };
 
 SubprogDeclList:      SubprogDecl {
-                          $$ = std::vector<pas::ast::SubprogDecl>({std::move($1)});
+                          $$ = std::vector<pas::ast::SubprogDecl>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     SubprogDecl SubprogDeclList {
                           $$ = std::move($2);
@@ -702,7 +717,8 @@ FormalParameters:     "(" OneFormalParamList ")" {
                           $$ = std::move($2);
                       };
 OneFormalParamList:   OneFormalParam {
-                          $$ = std::vector<pas::ast::FormalParam>({std::move($1)});
+                          $$ = std::vector<pas::ast::FormalParam>();
+                          $$.emplace_back(std::move($1));
                       }
 |                     OneFormalParam ";" OneFormalParamList {
                           $$ = std::move($3);

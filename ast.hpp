@@ -11,7 +11,7 @@
 namespace pas {
 namespace ast {
 class ProgramModule {
-    public: ProgramModule() = default;
+    public:  ProgramModule() = default;   ProgramModule(ProgramModule&& other) = default; ProgramModule& operator=(ProgramModule&& other) = default; 
   public:
     ProgramModule(std::string program_name, Block block) : program_name_(program_name), block_(std::move(block)) {}
 
@@ -21,7 +21,7 @@ class ProgramModule {
 };
 
 class CompilationUnit {
-    public: CompilationUnit() = default;
+    public:  CompilationUnit() = default;   CompilationUnit(CompilationUnit&& other) = default; CompilationUnit& operator=(CompilationUnit&& other) = default; 
   public:
     CompilationUnit(ProgramModule &&pm) : pm_(std::move(pm)) {}
 

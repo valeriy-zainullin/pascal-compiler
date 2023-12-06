@@ -11,7 +11,7 @@ namespace pas {
 namespace ast {
 
 class VarDecl {
-    public: VarDecl() = default;
+    public:  VarDecl() = default;   VarDecl(VarDecl&& other) = default; VarDecl& operator=(VarDecl&& other) = default; 
 
   public:
     VarDecl(std::vector<std::string> ident_list, Type type)
@@ -23,7 +23,7 @@ class VarDecl {
 };
 
 class ConstDef {
-    public: ConstDef() = default;
+    public:  ConstDef() = default;   ConstDef(ConstDef&& other) = default; ConstDef& operator=(ConstDef&& other) = default; 
 
   public:
     ConstDef(std::string ident, ConstExpr const_expr)
@@ -35,7 +35,7 @@ class ConstDef {
 };
 
 class TypeDef {
-    public: TypeDef() = default;
+    public:  TypeDef() = default;   TypeDef(TypeDef&& other) = default; TypeDef& operator=(TypeDef&& other) = default; 
 
   public:
     TypeDef(std::string ident, Type type)
@@ -47,7 +47,7 @@ class TypeDef {
 };
 
 class FormalParam {
-  public: FormalParam() = default;
+  public:  FormalParam() = default;   FormalParam(FormalParam&& other) = default; FormalParam& operator=(FormalParam&& other) = default; 
 
 public:
   FormalParam(std::vector<std::string> proc_name, std::string type_ident)
@@ -60,7 +60,7 @@ private:
 
 
 class ProcHeading {
-  public: ProcHeading() = default;
+  public:  ProcHeading() = default;   ProcHeading(ProcHeading&& other) = default; ProcHeading& operator=(ProcHeading&& other) = default; 
 
 public:
   ProcHeading(std::string proc_name, std::vector<FormalParam> params)
@@ -73,7 +73,7 @@ private:
 
 class Declarations;
 class Block {
-  public: Block() = default;
+  public:  Block() = default;   Block(Block&& other) = default; Block& operator=(Block&& other) = default; 
 
 public:
   // If we move construct from these,
@@ -94,7 +94,7 @@ private:
 };
 
 class ProcDecl {
-  public: ProcDecl() = default;
+  public:  ProcDecl() = default;   ProcDecl(ProcDecl&& other) = default; ProcDecl& operator=(ProcDecl&& other) = default; 
 
 public:
   ProcDecl(ProcHeading proc_heading, Block block)
@@ -106,7 +106,7 @@ private:
 };
 
 class FuncDecl {
-  public: FuncDecl() = default;
+  public:  FuncDecl() = default;   FuncDecl(FuncDecl&& other) = default; FuncDecl& operator=(FuncDecl&& other) = default; 
 
 public:
   FuncDecl(ProcDecl proc_decl, std::string ret_type_ident)
@@ -124,7 +124,7 @@ using SubprogDecl = std::variant<ProcDecl, FuncDecl>;
 
 
 class Declarations {
-    public: Declarations() = default;
+    public:  Declarations() = default;   Declarations(Declarations&& other) = default; Declarations& operator=(Declarations&& other) = default; 
 
   public:
     // If we move construct from these,

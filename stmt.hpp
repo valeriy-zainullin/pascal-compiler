@@ -50,7 +50,7 @@ using Stmt = std::variant<AssignmentUP, ProcCallUP, IfStmtUP, CaseStmtUP, WhileS
                           RepeatStmtUP, ForStmtUP, MemoryStmtUP, StmtSeqUP, EmptyStmtUP>;
 
 class StmtSeq {
-  public: StmtSeq() = default;
+  public:  StmtSeq() = default;   StmtSeq(StmtSeq&& other) = default; StmtSeq& operator=(StmtSeq&& other) = default; 
 
 public:
   StmtSeq(std::vector<Stmt> stmts)
@@ -62,11 +62,11 @@ private:
 
 class EmptyStmt {
   public:
-    EmptyStmt() = default;
+     EmptyStmt() = default;   EmptyStmt(EmptyStmt&& other) = default; EmptyStmt& operator=(EmptyStmt&& other) = default; 
 };
 
 class IfStmt {
-  public: IfStmt() = default;
+  public:  IfStmt() = default;   IfStmt(IfStmt&& other) = default; IfStmt& operator=(IfStmt&& other) = default; 
 
 public:
   IfStmt(Expr cond_expr, Stmt if_stmt,
@@ -81,7 +81,7 @@ private:
 };
 
 class Case {
-  public: Case() = default;
+  public:  Case() = default;   Case(Case&& other) = default; Case& operator=(Case&& other) = default; 
 
 public:
   Case(std::vector<ConstExpr> labels, Stmt then_stmt)
@@ -93,7 +93,7 @@ private:
 };
 
 class CaseStmt {
-  public: CaseStmt() = default;
+  public:  CaseStmt() = default;   CaseStmt(CaseStmt&& other) = default; CaseStmt& operator=(CaseStmt&& other) = default; 
 
 public:
   CaseStmt(Expr cond_expr, std::vector<Case> cases) : cond_expr_(std::move(cond_expr)), cases_(std::move(cases)) {}
@@ -104,7 +104,7 @@ private:
 };
 
 class WhileStmt {
-  public: WhileStmt() = default;
+  public:  WhileStmt() = default;   WhileStmt(WhileStmt&& other) = default; WhileStmt& operator=(WhileStmt&& other) = default; 
 
 public:
     WhileStmt(Expr cond_expr, Stmt inner_stmt)
@@ -115,7 +115,7 @@ private:
 };
 
 class RepeatStmt {
-    public: RepeatStmt() = default;
+    public:  RepeatStmt() = default;   RepeatStmt(RepeatStmt&& other) = default; RepeatStmt& operator=(RepeatStmt&& other) = default; 
 
   public:
     RepeatStmt(std::vector<Stmt> inner_stmts,
@@ -134,7 +134,7 @@ enum class WhichWay {
 };
 
 class ForStmt {
-    public: ForStmt() = default;
+    public:  ForStmt() = default;   ForStmt(ForStmt&& other) = default; ForStmt& operator=(ForStmt&& other) = default; 
 
   public:
     ForStmt(std::string ident, Expr start_val_expr,
@@ -153,7 +153,7 @@ private:
 };
 
 class MemoryStmt {
-    public: MemoryStmt() = default;
+    public:  MemoryStmt() = default;   MemoryStmt(MemoryStmt&& other) = default; MemoryStmt& operator=(MemoryStmt&& other) = default; 
 
   public:
     enum class Kind {
@@ -172,7 +172,7 @@ private:
 };
 
 class Assignment {
-  public: Assignment() = default;
+  public:  Assignment() = default;   Assignment(Assignment&& other) = default; Assignment& operator=(Assignment&& other) = default; 
 
 public:
   Assignment(Designator designator, Expr expr)
@@ -183,7 +183,7 @@ private:
   Expr expr_;
 };
 class ProcCall {
-  public: ProcCall() = default;
+  public:  ProcCall() = default;   ProcCall(ProcCall&& other) = default; ProcCall& operator=(ProcCall&& other) = default; 
 
 public:
   ProcCall(std::string proc_ident, std::vector<Expr> params)
