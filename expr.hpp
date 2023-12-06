@@ -22,7 +22,10 @@ class Expr;
 using ExprUP = std::unique_ptr<Expr>;
 
 class DesignatorFieldAccess {
-  public:  DesignatorFieldAccess() = default;   DesignatorFieldAccess(DesignatorFieldAccess&& other) = default; DesignatorFieldAccess& operator=(DesignatorFieldAccess&& other) = default; 
+public:
+  DesignatorFieldAccess() = default;
+  DesignatorFieldAccess(DesignatorFieldAccess &&other) = default;
+  DesignatorFieldAccess &operator=(DesignatorFieldAccess &&other) = default;
 
 public:
   DesignatorFieldAccess(std::string ident) : ident_(std::move(ident)) {}
@@ -31,7 +34,10 @@ private:
   std::string ident_;
 };
 class DesignatorArrayAccess {
-  public:  DesignatorArrayAccess() = default;   DesignatorArrayAccess(DesignatorArrayAccess&& other) = default; DesignatorArrayAccess& operator=(DesignatorArrayAccess&& other) = default; 
+public:
+  DesignatorArrayAccess() = default;
+  DesignatorArrayAccess(DesignatorArrayAccess &&other) = default;
+  DesignatorArrayAccess &operator=(DesignatorArrayAccess &&other) = default;
 
 public:
   DesignatorArrayAccess(std::vector<ExprUP> expr_list)
@@ -41,23 +47,30 @@ private:
   std::vector<ExprUP> expr_list_;
 };
 class DesignatorPointerAccess {
-  public:  DesignatorPointerAccess() = default;   DesignatorPointerAccess(DesignatorPointerAccess&& other) = default; DesignatorPointerAccess& operator=(DesignatorPointerAccess&& other) = default; 
+public:
+  DesignatorPointerAccess() = default;
+  DesignatorPointerAccess(DesignatorPointerAccess &&other) = default;
+  DesignatorPointerAccess &operator=(DesignatorPointerAccess &&other) = default;
 };
 
 enum class DesignatorItemKind {
-    FieldAccess   = 0,
-    ArrayAccess   = 1,
-    PointerAccess = 2
+  FieldAccess = 0,
+  ArrayAccess = 1,
+  PointerAccess = 2
 };
 
-using DesignatorItem = std::variant<DesignatorFieldAccess, DesignatorArrayAccess, DesignatorPointerAccess>;
+using DesignatorItem =
+    std::variant<DesignatorFieldAccess, DesignatorArrayAccess,
+                 DesignatorPointerAccess>;
 
 class Designator {
-  public:  Designator() = default;   Designator(Designator&& other) = default; Designator& operator=(Designator&& other) = default; 
+public:
+  Designator() = default;
+  Designator(Designator &&other) = default;
+  Designator &operator=(Designator &&other) = default;
 
 public:
-  Designator(std::string ident,
-             std::vector<DesignatorItem> items)
+  Designator(std::string ident, std::vector<DesignatorItem> items)
       : ident_(std::move(ident)), items_(std::move(items)) {}
 
 private:
@@ -82,22 +95,27 @@ class FuncCall;
 using NegationUP = std::unique_ptr<Negation>;
 using FuncCallUP = std::unique_ptr<FuncCall>;
 
-using Factor = std::variant<std::string, int, bool, std::monostate, Designator, ExprUP, NegationUP, FuncCallUP>;
+using Factor = std::variant<std::string, int, bool, std::monostate, Designator,
+                            ExprUP, NegationUP, FuncCallUP>;
 
 class Negation {
-  public:  Negation() = default;   Negation(Negation&& other) = default; Negation& operator=(Negation&& other) = default; 
+public:
+  Negation() = default;
+  Negation(Negation &&other) = default;
+  Negation &operator=(Negation &&other) = default;
 
 public:
-  Negation(Factor factor)
-      : factor_(std::move(factor)) {}
+  Negation(Factor factor) : factor_(std::move(factor)) {}
 
 private:
   Factor factor_;
 };
 
-
 class Term {
-  public:  Term() = default;   Term(Term&& other) = default; Term& operator=(Term&& other) = default; 
+public:
+  Term() = default;
+  Term(Term &&other) = default;
+  Term &operator=(Term &&other) = default;
 
 public:
   struct Op {
@@ -105,16 +123,18 @@ public:
     Factor factor;
   };
   Term(Factor start_factor, std::vector<Op> ops)
-      : start_factor_(std::move(start_factor)), ops_(std::move(ops)) {
-  }
+      : start_factor_(std::move(start_factor)), ops_(std::move(ops)) {}
 
 private:
-  Factor          start_factor_;
+  Factor start_factor_;
   std::vector<Op> ops_;
 };
 
 class SimpleExpr {
-  public:  SimpleExpr() = default;   SimpleExpr(SimpleExpr&& other) = default; SimpleExpr& operator=(SimpleExpr&& other) = default; 
+public:
+  SimpleExpr() = default;
+  SimpleExpr(SimpleExpr &&other) = default;
+  SimpleExpr &operator=(SimpleExpr &&other) = default;
 
 public:
   struct Op {
@@ -122,10 +142,9 @@ public:
     Term term;
   };
   SimpleExpr(std::optional<UnaryOp> unary_op, Term start_term,
-               std::vector<Op> ops)
+             std::vector<Op> ops)
       : unary_op_(std::move(unary_op)), start_term_(std::move(start_term)),
-        ops_(std::move(ops)) {
-  }
+        ops_(std::move(ops)) {}
 
 private:
   std::optional<UnaryOp> unary_op_;
@@ -134,20 +153,21 @@ private:
 };
 
 class Expr {
-  public:  Expr() = default;   Expr(Expr&& other) = default; Expr& operator=(Expr&& other) = default; 
+public:
+  Expr() = default;
+  Expr(Expr &&other) = default;
+  Expr &operator=(Expr &&other) = default;
 
 public:
   struct Op {
     RelOp rel;
     SimpleExpr expr;
   };
-  Expr(SimpleExpr start_expr,
-         std::optional<Op> op = std::optional<Op>())
-      : start_expr_(std::move(start_expr)), op_(std::move(op)) {
-  }
+  Expr(SimpleExpr start_expr, std::optional<Op> op = std::optional<Op>())
+      : start_expr_(std::move(start_expr)), op_(std::move(op)) {}
 
 private:
-  SimpleExpr        start_expr_;
+  SimpleExpr start_expr_;
   std::optional<Op> op_;
 };
 
@@ -160,7 +180,10 @@ private:
 //   evaluation should become a statement
 //   then.
 class FuncCall {
-  public:  FuncCall() = default;   FuncCall(FuncCall&& other) = default; FuncCall& operator=(FuncCall&& other) = default; 
+public:
+  FuncCall() = default;
+  FuncCall(FuncCall &&other) = default;
+  FuncCall &operator=(FuncCall &&other) = default;
 
 public:
   FuncCall(std::string func_ident, std::vector<Expr> params)
@@ -171,5 +194,5 @@ private:
   std::vector<Expr> params_;
 };
 
-}
-}
+} // namespace ast
+} // namespace pas

@@ -29,10 +29,10 @@ bool Driver::parse(const std::string &f) {
   return true;
 }
 
-//bool Driver::typecheck() {
-//  assert(ast_.has_value());
-//  return pas::sema::typecheck(ast_.value());
-//}
+// bool Driver::typecheck() {
+//   assert(ast_.has_value());
+//   return pas::sema::typecheck(ast_.value());
+// }
 
 void Driver::scan_begin() {
   scanner.set_debug(trace_scanning);

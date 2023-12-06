@@ -12,5 +12,5 @@ class RepeatStmt;
 class ForStmt;
 class MemoryStmt;
 
-}
-}
+} // namespace ast
+} // namespace pas
