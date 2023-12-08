@@ -29,7 +29,7 @@ public:
   ConstExpr(std::optional<UnaryOp> unary_op, ConstFactor factor)
       : unary_op_(std::move(unary_op)), factor_(std::move(factor)) {}
 
-private:
+public:
   std::optional<UnaryOp> unary_op_;
   ConstFactor factor_;
 };

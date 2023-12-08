@@ -36,7 +36,7 @@ public:
   Subrange(ConstFactor start, ConstFactor finish)
       : start_(std::move(start)), finish_(std::move(finish)) {}
 
-private:
+public:
   ConstFactor start_;
   ConstFactor finish_;
 };
@@ -50,7 +50,7 @@ public:
 public:
   SetType(Subrange subrange) : subrange_(std::move(subrange)) {}
 
-private:
+public:
   Subrange subrange_;
 };
 
@@ -65,7 +65,7 @@ public:
       : subrange_list_(std::move(subrange_list)),
         item_type_(std::move(item_type)) {}
 
-private:
+public:
   std::vector<Subrange> subrange_list_;
   Type item_type_;
 };
@@ -80,7 +80,7 @@ public:
   PointerType(std::string ref_type_name)
       : ref_type_name_(std::move(ref_type_name)) {}
 
-private:
+public:
   std::string ref_type_name_;
 };
 
@@ -94,7 +94,7 @@ public:
   FieldList(std::vector<std::string> idents, Type type)
       : idents_(std::move(idents)), type_(std::move(type)) {}
 
-private:
+public:
   std::vector<std::string> idents_;
   Type type_;
 };
@@ -108,7 +108,7 @@ public:
 public:
   RecordType(std::vector<FieldList> field) : fields_(std::move(field)) {}
 
-private:
+public:
   std::vector<FieldList> fields_;
 };
 
@@ -123,7 +123,7 @@ public:
 public:
   NamedType(std::string type_name) : type_name_(std::move(type_name)) {}
 
-private:
+public:
   std::string type_name_;
 };
 

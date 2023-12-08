@@ -20,7 +20,7 @@ public:
   VarDecl(std::vector<std::string> ident_list, Type type)
       : ident_list_(std::move(ident_list)), type_(std::move(type)) {}
 
-private:
+public:
   std::vector<std::string> ident_list_;
   Type type_;
 };
@@ -35,7 +35,7 @@ public:
   ConstDef(std::string ident, ConstExpr const_expr)
       : ident_(std::move(ident)), const_expr_(std::move(const_expr)) {}
 
-private:
+public:
   std::string ident_;
   ConstExpr const_expr_;
 };
@@ -50,7 +50,7 @@ public:
   TypeDef(std::string ident, Type type)
       : ident_(std::move(ident)), type_(std::move(type)) {}
 
-private:
+public:
   std::string ident_;
   Type type_;
 };
@@ -65,7 +65,7 @@ public:
   FormalParam(std::vector<std::string> proc_name, std::string type_ident)
       : proc_name_(std::move(proc_name)), type_ident_(std::move(type_ident)) {}
 
-private:
+public:
   std::vector<std::string> proc_name_;
   std::string type_ident_;
 };
@@ -80,7 +80,7 @@ public:
   ProcHeading(std::string proc_name, std::vector<FormalParam> params)
       : proc_name_(std::move(proc_name)), params_(std::move(params)) {}
 
-private:
+public:
   std::string proc_name_;
   std::vector<FormalParam> params_;
 };
@@ -101,7 +101,7 @@ public:
   Block(std::unique_ptr<Declarations> decls, std::vector<Stmt> stmt_seq)
       : decls_(std::move(decls)), stmt_seq_(std::move(stmt_seq)) {}
 
-private:
+public:
   // Block is needed for FuncDecl and ProcDecl, but it needs Declarations,
   //   which in turn requires FuncDecl and ProcDecl as subprog decls.
   //   We can't store this object in each other as hierarchy requires as there's
@@ -120,7 +120,7 @@ public:
   ProcDecl(ProcHeading proc_heading, Block block)
       : proc_heading_(std::move(proc_heading)), block_(std::move(block)) {}
 
-private:
+public:
   ProcHeading proc_heading_;
   Block block_;
 };
@@ -136,7 +136,7 @@ public:
       : proc_decl_(std::move(proc_decl)),
         ret_type_ident_(std::move(ret_type_ident)) {}
 
-private:
+public:
   ProcDecl proc_decl_;
   std::string ret_type_ident_;
 };
@@ -164,7 +164,7 @@ public:
         var_decls_(std::move(var_decls)),
         subprog_decls_(std::move(subprog_decls)) {}
 
-private:
+public:
   std::vector<ConstDef> const_defs_;
   std::vector<TypeDef> type_defs_;
   std::vector<VarDecl> var_decls_;

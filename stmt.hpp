@@ -59,7 +59,7 @@ public:
 public:
   StmtSeq(std::vector<Stmt> stmts) : stmts_(std::move(stmts)) {}
 
-private:
+public:
   std::vector<Stmt> stmts_;
 };
 
@@ -82,7 +82,7 @@ public:
       : cond_expr_(std::move(cond_expr)), then_stmt_(std::move(if_stmt)),
         else_stmt_(std::move(else_stmt)) {}
 
-private:
+public:
   Expr cond_expr_;
   Stmt then_stmt_;
   std::optional<Stmt> else_stmt_;
@@ -98,7 +98,7 @@ public:
   Case(std::vector<ConstExpr> labels, Stmt then_stmt)
       : labels_(std::move(labels)), then_stmt_(std::move(then_stmt)) {}
 
-private:
+public:
   std::vector<ConstExpr> labels_;
   Stmt then_stmt_;
 };
@@ -113,7 +113,7 @@ public:
   CaseStmt(Expr cond_expr, std::vector<Case> cases)
       : cond_expr_(std::move(cond_expr)), cases_(std::move(cases)) {}
 
-private:
+public:
   Expr cond_expr_;
   std::vector<Case> cases_;
 };
@@ -128,7 +128,7 @@ public:
   WhileStmt(Expr cond_expr, Stmt inner_stmt)
       : cond_expr_(std::move(cond_expr)), inner_stmt_(std::move(inner_stmt)) {}
 
-private:
+public:
   Expr cond_expr_;
   Stmt inner_stmt_;
 };
@@ -144,7 +144,7 @@ public:
       : inner_stmts_(std::move(inner_stmts)), cond_expr_(std::move(cond_expr)) {
   }
 
-private:
+public:
   std::vector<Stmt> inner_stmts_;
   Expr cond_expr_;
 };
@@ -164,7 +164,7 @@ public:
         finish_val_expr_(std::move(finish_val_expr)),
         inner_stmt_(std::move(inner_stmt)) {}
 
-private:
+public:
   std::string ident_;
   Expr start_val_expr_;
   WhichWay dir_;
@@ -186,7 +186,7 @@ public:
   MemoryStmt(Kind kind, std::string ident)
       : kind_(std::move(kind)), ident_(std::move(ident)) {}
 
-private:
+public:
   Kind kind_;
   std::string ident_;
 };
@@ -201,7 +201,7 @@ public:
   Assignment(Designator designator, Expr expr)
       : designator_(std::move(designator)), expr_(std::move(expr)) {}
 
-private:
+public:
   Designator designator_;
   Expr expr_;
 };
@@ -215,7 +215,7 @@ public:
   ProcCall(std::string proc_ident, std::vector<Expr> params)
       : proc_ident_(std::move(proc_ident)), params_(std::move(params)) {}
 
-private:
+public:
   std::string proc_ident_;
   std::vector<Expr> params_;
 };

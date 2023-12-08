@@ -20,7 +20,7 @@ public:
   ProgramModule(std::string program_name, Block block)
       : program_name_(program_name), block_(std::move(block)) {}
 
-private:
+public:
   std::string program_name_;
   Block block_;
 };
@@ -34,7 +34,7 @@ public:
 public:
   CompilationUnit(ProgramModule &&pm) : pm_(std::move(pm)) {}
 
-private:
+public:
   ProgramModule pm_;
 };
 

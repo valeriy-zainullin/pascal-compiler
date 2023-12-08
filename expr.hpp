@@ -30,7 +30,7 @@ public:
 public:
   DesignatorFieldAccess(std::string ident) : ident_(std::move(ident)) {}
 
-private:
+public:
   std::string ident_;
 };
 class DesignatorArrayAccess {
@@ -43,7 +43,7 @@ public:
   DesignatorArrayAccess(std::vector<ExprUP> expr_list)
       : expr_list_(std::move(expr_list)) {}
 
-private:
+public:
   std::vector<ExprUP> expr_list_;
 };
 class DesignatorPointerAccess {
@@ -73,7 +73,7 @@ public:
   Designator(std::string ident, std::vector<DesignatorItem> items)
       : ident_(std::move(ident)), items_(std::move(items)) {}
 
-private:
+public:
   std::string ident_;
   std::vector<DesignatorItem> items_;
 };
@@ -107,7 +107,7 @@ public:
 public:
   Negation(Factor factor) : factor_(std::move(factor)) {}
 
-private:
+public:
   Factor factor_;
 };
 
@@ -125,7 +125,7 @@ public:
   Term(Factor start_factor, std::vector<Op> ops)
       : start_factor_(std::move(start_factor)), ops_(std::move(ops)) {}
 
-private:
+public:
   Factor start_factor_;
   std::vector<Op> ops_;
 };
@@ -146,7 +146,7 @@ public:
       : unary_op_(std::move(unary_op)), start_term_(std::move(start_term)),
         ops_(std::move(ops)) {}
 
-private:
+public:
   std::optional<UnaryOp> unary_op_;
   Term start_term_;
   std::vector<Op> ops_;
@@ -166,7 +166,8 @@ public:
   Expr(SimpleExpr start_expr, std::optional<Op> op = std::optional<Op>())
       : start_expr_(std::move(start_expr)), op_(std::move(op)) {}
 
-private:
+public:
+  // TODO: refactor rename to simple_expr_. And rename arg in constructor to simple_expr.
   SimpleExpr start_expr_;
   std::optional<Op> op_;
 };
@@ -189,7 +190,7 @@ public:
   FuncCall(std::string func_ident, std::vector<Expr> params)
       : func_ident_(std::move(func_ident)), params_(std::move(params)) {}
 
-private:
+public:
   std::string func_ident_;
   std::vector<Expr> params_;
 };
