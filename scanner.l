@@ -102,6 +102,7 @@ string \"[^"]*\"|\'[^']\'
 "]"         return yy::parser::make_RBRACKET  (loc);
 "."         return yy::parser::make_DOT       (loc);
 ","         return yy::parser::make_COMMA     (loc);
+":"         return yy::parser::make_COLON     (loc);
 ";"         return yy::parser::make_SEMICOLON (loc);
 
 "div"       return yy::parser::make_DIV       (loc);

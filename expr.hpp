@@ -167,7 +167,8 @@ public:
       : start_expr_(std::move(start_expr)), op_(std::move(op)) {}
 
 public:
-  // TODO: refactor rename to simple_expr_. And rename arg in constructor to simple_expr.
+  // TODO: refactor rename to simple_expr_. And rename arg in constructor to
+  // simple_expr.
   SimpleExpr start_expr_;
   std::optional<Op> op_;
 };

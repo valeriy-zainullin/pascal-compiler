@@ -80,6 +80,7 @@
     RBRACKET  "]"
     DOT       "."
     COMMA     ","
+    COLON     ":"
     SEMICOLON ";"
 
     ARRAY     "array"
@@ -178,6 +179,7 @@
 %nterm <pas::ast::DesignatorItem>               DesignatorItem
 %nterm <std::vector<pas::ast::Expr>>            ActualParameters
 %nterm <std::vector<pas::ast::Expr>>            ExpList
+%nterm <std::vector<pas::ast::Expr>>            ExpListOpt
 %nterm <pas::ast::MemoryStmt>                   MemoryStatement
 %nterm <pas::ast::Expr>                         Expression
 %nterm <pas::ast::SimpleExpr>                   SimpleExpression
@@ -550,9 +552,22 @@ DesignatorItem:       "." identifier {
 |                     "^" {
                           $$ = pas::ast::DesignatorPointerAccess();
                       };
-ActualParameters:     "(" ExpList ")" {
+ActualParameters:     "(" ExpListOpt ")" {
+                          // Actual parameters is always non-empty expression list.
+                          //   grammar.pdf has ExpList here, no optionality.
+                          // I find it strange we have to always specify a parameter
+                          //   for a function call inside expressions. It's not true, I think.
+                          //   I saw pascal in my life, it's not that strange. So I think
+                          //   it's a bug or I count it this way, it should be reasonable
+                          //   to assume we can have empty parameter list.
                           $$ = std::move($2);
                       };
+ExpListOpt:           ExpList {
+                          $$ = std::move($1);
+                      }
+|                     %empty {
+                          $$ = std::vector<pas::ast::Expr>();
+                      }
 ExpList:              Expression {
                           $$ = std::vector<pas::ast::Expr>();
                           $$.emplace_back(std::move($1));

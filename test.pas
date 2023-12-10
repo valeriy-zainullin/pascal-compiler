@@ -1,13 +1,20 @@
 program Hello;
-var lib_token, printf_token : Integer;
+var a, b : Integer; c : String;
 begin
-	lib_token := LibraryLoad("glibc.so");
-  printf_token := LibraryFind(lib_token, "printf");
+  a := read_int();
+  b := read_int();
+  write_int(a + b);
+  write_char(chr(13));
+
   if 2 + 2 = 4 then
-		LibraryCall(printf_token, "Yahoo!");
+    write_int(a - b);
     if 2 + 1 = 4 then
-       LibraryCall(printf_token, "I got that summertime, summertime sadness..")
+       write_int(a + b);
 	else
-		LibraryCall(printf_token, "I'm all geared up!");
-	LibraryUnload(lib_token);
+		write_int(a * b);
+
+  c := read_str();
+  append(c, 'a');
+  write_str(c);
+  write_char(chr(13));
 end.

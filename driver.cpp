@@ -27,7 +27,7 @@ bool Driver::parse(const std::string &f) {
 
   assert(ast_.has_value());
 
-  pas::visitor::Printer printer;
+  pas::visitor::Printer printer(std::cout);
   printer.visit(ast_.value());
 
   return true;
