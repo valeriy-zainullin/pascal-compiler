@@ -48,4 +48,5 @@ begin
   write_char(chr(10));
 
   write_int(2 * 2 div 4 + 1 mod 8);
+  write_char(chr(10));
 end.

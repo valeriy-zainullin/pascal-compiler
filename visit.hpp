@@ -9,8 +9,8 @@
 namespace pas {
 namespace ast {
 
-#define MAKE_VISIT_STMT_FRIEND()                                        \
-  template <typename Visitor, typename Ret>                             \
+#define MAKE_VISIT_STMT_FRIEND()                                               \
+  template <typename Visitor, typename Ret>                                    \
   friend Ret pas::ast::visit_stmt(Visitor &visitor, pas::ast::Stmt &stmt);
 
 template <typename Visitor, typename Ret = void>
