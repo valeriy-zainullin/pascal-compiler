@@ -23,6 +23,13 @@
     const yy::parser::location_type& loc
   );
 
+  // A std::string corresponding to string constant.
+  //   For now, just deletes double quotes.
+  yy::parser::symbol_type make_string(
+    const std::string &s,
+    const yy::parser::location_type& loc
+  );
+
   void Scanner::UpdateLocation() {
     if (driver.location_debug) {
         std::cerr << "Action called " << driver.location << std::endl;
@@ -39,7 +46,7 @@ blank  [ \t\r]
      https://www.freepascal.org/docs-html/ref/refse8.html
      At some point it will be.
 */
-string \"[^"]*\"|\'[^']\'
+string \"[^"]*\"|\'[^\']*\'
 
 /* TODO: implement comments. Just match them, log and throw away, accounting newlines inside of them. */
 
@@ -148,7 +155,7 @@ string \"[^"]*\"|\'[^']\'
 
 
 {int}       return make_number(yytext, loc);
-{string}    return yy::parser::make_string(yytext, loc);
+{string}    return make_string(yytext, loc);
 {id}       {
                 if (driver.location_debug) {
                     std::cerr << "ID found " << yytext << std::endl;
@@ -170,4 +177,12 @@ yy::parser::symbol_type make_number(
   if (! (INT_MIN <= n && n <= INT_MAX && errno != ERANGE))
     throw yy::parser::syntax_error(loc, "integer is out of range: " + s);
   return yy::parser::make_number((int) n, loc);
+}
+
+yy::parser::symbol_type make_string(
+  const std::string &s,
+  const yy::parser::location_type& loc
+) {
+  std::string inner_text(s.begin() + 1, s.end() - 1);
+  return yy::parser::make_string(inner_text, loc);
 }

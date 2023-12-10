@@ -21,7 +21,8 @@ enum class StmtKind : size_t {
   Repeat = 5,
   For = 6,
   Memory = 7,
-  Empty = 8
+  StmtSeq = 8,
+  Empty = 9
 };
 
 class Assignment;

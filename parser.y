@@ -50,7 +50,7 @@
 
 %locations
 
-%nonassoc IFPREC
+%nonassoc IF
 %nonassoc ELSE
 
 %define api.token.prefix {TOK_}
@@ -89,7 +89,6 @@
     CONST     "const"
     DO        "do"
     DOWNTO    "downto"
-    ELSE      "else"
     END       "end"
     FILE      "file"
     FOR       "for"
@@ -104,6 +103,7 @@
     REPEAT    "repeat"
     SET       "set"
     THEN      "then"
+    ELSE      "else"
     TO        "to"
     TYPE      "type"
     UNTIL     "until"
@@ -220,9 +220,11 @@
 //   https://stackoverflow.com/q/6911214
 // The question at stack overflow has code we can use.
 
-// We don't have IO statements, by design. We can use scanf and printf
-//   from libc of the platform. For these purposes there are LibraryLoad,
-//   LibraryCall, LibraryUnload built-ins.
+// This is the thing I wanted to do, but I figured out I don't have time
+//   for this.
+//   We don't have IO statements, by design. We can use scanf and printf
+//     from libc of the platform. For these purposes there are LibraryLoad,
+//     LibraryCall, LibraryUnload built-ins.
 
 
 // We can disregard program parameters.
@@ -479,7 +481,7 @@ ActualParametersOpt:  ActualParameters {
 |                     %empty {
                           $$ = std::vector<pas::ast::Expr>();
                       };
-IfStatement:          IF Expression THEN Statement                 %prec IFPREC {
+IfStatement:          IF Expression THEN Statement {
                           $$ = pas::ast::IfStmt(std::move($2), std::move($4));
                       }
 |                     IF Expression THEN Statement ELSE Statement {

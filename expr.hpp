@@ -79,7 +79,7 @@ public:
 };
 
 enum class FactorKind {
-  Identifier = 0,
+  String = 0,
   Number = 1,
   Bool = 2,
   Nil = 3,

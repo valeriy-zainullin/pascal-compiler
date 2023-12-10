@@ -1,0 +1,1 @@
+else write_int(a * b);

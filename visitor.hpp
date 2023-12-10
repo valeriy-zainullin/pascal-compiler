@@ -146,6 +146,7 @@ private:
   void visit(pas::ast::Designator &node) {}
   void visit(pas::ast::DesignatorItem &node) {}
   void visit(pas::ast::MemoryStmt &node) {}
+  void visit(pas::ast::EmptyStmt& empty_stmt) {}
   void visit(pas::ast::Expr &node) {}
   void visit(pas::ast::SimpleExpr &node) {}
   void visit(pas::ast::Term &node) {}
@@ -173,7 +174,12 @@ private:
   size_t depth_ = 0;
 };
 
-class DescribedException : std::exception {
+// Must write public, otherwise
+//   catch won't catch an exception
+//   of our type as std::exception&.
+//   https://stackoverflow.com/a/50133665
+
+class DescribedException : public std::exception {
 public:
   DescribedException() = delete;
 
@@ -185,17 +191,17 @@ private:
   std::string msg_;
 };
 
-class NotImplementedException : DescribedException {
+class NotImplementedException : public DescribedException {
 public:
   using DescribedException::DescribedException;
 };
 
-class SemanticProblemException : DescribedException {
+class SemanticProblemException : public DescribedException {
 public:
   using DescribedException::DescribedException;
 };
 
-class RuntimeProblemException : DescribedException {
+class RuntimeProblemException : public DescribedException {
 public:
   using DescribedException::DescribedException;
 };
@@ -321,27 +327,15 @@ private:
     case get_idx(pas::ast::FactorKind::Number): {
       return Value(std::get<int>(factor));
     }
-    case get_idx(pas::ast::FactorKind::Identifier): {
-      const std::string &ident = std::get<std::string>(factor);
-      if (!ident_to_item_.contains(ident)) {
-        throw SemanticProblemException(
-            "expression references an undeclared identifier: " + ident);
-      }
-      std::variant<std::shared_ptr<Type>, std::shared_ptr<Value>> item =
-          ident_to_item_[ident];
-      if (item.index() != 1) {
-        throw SemanticProblemException(
-            "expression must reference a value, not a type: " + ident);
-      }
-
-      return Value(*std::get<std::shared_ptr<Value>>(item));
+    case get_idx(pas::ast::FactorKind::String): {
+      return Value(std::get<std::string>(factor));
     }
     case get_idx(pas::ast::FactorKind::Nil): {
       throw NotImplementedException("Nil is not supported yet");
     }
     case get_idx(pas::ast::FactorKind::FuncCall): {
-      throw NotImplementedException(
-          "Function calls in expressions are not supported yet.");
+      return eval(*std::get<pas::ast::FuncCallUP>(factor));
+      break;
     }
 
     case get_idx(pas::ast::FactorKind::Negation): {
@@ -551,6 +545,8 @@ private:
     }
   }
 
+  void visit(pas::ast::EmptyStmt& empty_stmt) {}
+
   void visit(pas::ast::ForStmt &for_stmt) {
     Value start_value = eval(for_stmt.start_val_expr_);
     Value end_value = eval(for_stmt.finish_val_expr_);
@@ -694,7 +690,7 @@ private:
       }
     int value = 0;
       std::cin >> value;
-      return Value(std::in_place_type<char>, value);
+      return Value(std::in_place_type<int>, value);
   }
 
   Value eval_strlen(pas::ast::FuncCall& func_call) {
@@ -719,16 +715,26 @@ private:
 
   Value eval_ord(pas::ast::FuncCall& func_call) {
       if (func_call.params_.size() != 1) {
-          throw SemanticProblemException("function ord accepts only one parameter of type Char");
+          throw SemanticProblemException("function ord accepts only one parameter of type Char or String (of length 1)");
       }
 
       Value arg = eval(func_call.params_[0]);
 
-      if (arg.index() != get_idx(ValueKind::Char)) {
-          throw SemanticProblemException("function ord parameter must be of type Char");
+      if (arg.index() != get_idx(ValueKind::Char) && arg.index() != get_idx(ValueKind::String)) {
+          throw SemanticProblemException("function ord parameter must be of type Char or a String of length 1");
       }
 
-      auto chr = std::get<char>(arg);
+      char chr = '\0';
+
+      if (arg.index() == get_idx(ValueKind::Char)) {
+          chr = std::get<char>(arg);
+      } else if (arg.index() == get_idx(ValueKind::String)) {
+          auto& str = std::get<std::string>(arg);
+          if (str.size() != 1) {
+              throw RuntimeProblemException("Too short or too long string for ord, should be of length 1");
+          }
+          chr = str[0];
+      }
 
       return Value(std::in_place_type<int>, static_cast<int>(chr));
   }
@@ -757,17 +763,17 @@ private:
       const std::string& func_name = func_call.func_ident_;
 
       if (func_name == "read_char") {
-          eval_read_char(func_call);
+          return eval_read_char(func_call);
       } else if (func_name == "read_str") {
-          eval_read_str(func_call);
+          return eval_read_str(func_call);
       } else if (func_name == "read_int") {
-          eval_read_int(func_call);
+          return eval_read_int(func_call);
       } else if (func_name == "strlen") {
-          eval_strlen(func_call);
+          return eval_strlen(func_call);
       } else if (func_name == "ord") {
-          eval_ord(func_call);
+          return eval_ord(func_call);
       } else if (func_name == "chr") {
-          eval_chr(func_call);
+          return eval_chr(func_call);
       } else {
           throw NotImplementedException("function calls are not supported yet, except read_char, read_str, read_int, strlen, ord, chr");
       }
@@ -815,8 +821,82 @@ private:
       std::cout << std::get<int>(arg);
   }
 
+  Value& eval_ref(pas::ast::Expr& expr) {
+      if (expr.op_.has_value()) {
+          throw SemanticProblemException("expected identifier, not an operation");
+      }
+      pas::ast::SimpleExpr& simple_expr = expr.start_expr_;
+      if (!simple_expr.ops_.empty() || simple_expr.unary_op_.has_value()) {
+              throw SemanticProblemException("expected identifier, not an operation");
+          }
+      pas::ast::Term& term = simple_expr.start_term_;
+      if (!term.ops_.empty()) {
+          throw SemanticProblemException("expected identifier, not an operation");
+      }
+      pas::ast::Factor& factor = term.start_factor_;
+      if (factor.index() != get_idx(pas::ast::FactorKind::Designator)) {
+          throw SemanticProblemException("expected identifier, not an expression");
+      }
+
+      pas::ast::Designator& designator = std::get<pas::ast::Designator>(factor);
+      if (!designator.items_.empty()) {
+          // Array access is not supported for now in value reference evaluation.
+          throw SemanticProblemException("unexpected array access, expected an identifier");
+      }
+
+      std::string& ident = designator.ident_;
+      if (!ident_to_item_.contains(ident)) {
+          throw SemanticProblemException("reference to undeclared " + ident);
+      }
+      std::variant<std::shared_ptr<Type>, std::shared_ptr<Value>> item = ident_to_item_[ident];
+      if (item.index() != 1) {
+          throw SemanticProblemException("identifier must reference a value, not a type");
+      }
+      return *std::get<std::shared_ptr<Value>>(item);
+  }
+
+  void visit_append(pas::ast::ProcCall& proc_call) {
+      if (proc_call.params_.size() != 2) {
+          throw SemanticProblemException("procedure append accepts only two parameters: String, Ch`ar");
+      }
+
+      Value& dst_arg = eval_ref(proc_call.params_[0]);
+      Value  src_arg = eval(proc_call.params_[1]);
+
+      if (dst_arg.index() != get_idx(ValueKind::String)) {
+          throw SemanticProblemException("procedure append first parameter must be of type String");
+      }
+      if (src_arg.index() != get_idx(ValueKind::Char) && src_arg.index() != get_idx(ValueKind::String)) {
+          throw SemanticProblemException("procedure append second parameter must be of type Char or String");
+      }
+
+      if (src_arg.index() == get_idx(ValueKind::Char)) {
+          std::get<std::string>(dst_arg).push_back(std::get<char>(src_arg));
+      } else if (src_arg.index() == get_idx(ValueKind::String)) {
+          auto& dst = std::get<std::string>(dst_arg);
+          auto& src = std::get<std::string>(src_arg);
+          dst.insert(dst.end(), src.begin(), src.end());
+      }
+  }
+
+  void visit_drop(pas::ast::ProcCall& proc_call) {
+      if (proc_call.params_.size() != 2) {
+          throw SemanticProblemException("procedure drop accepts only one parameters: String");
+      }
+
+      Value& str_arg = eval_ref(proc_call.params_[0]);
+
+      if (str_arg.index() != get_idx(ValueKind::String)) {
+          throw SemanticProblemException("procedure drop parameter must be of type String");
+      }
+
+      std::get<std::string>(str_arg).pop_back();
+  }
+
   void visit(pas::ast::ProcCall& proc_call) {
       const std::string& proc_name = proc_call.proc_ident_;
+
+//      std::cerr << "ProcCall proc_name = " << proc_name << std::endl;
 
       if (proc_name == "write_char") {
           visit_write_char(proc_call);
@@ -824,8 +904,12 @@ private:
           visit_write_str(proc_call);
       } else if (proc_name == "write_int") {
           visit_write_int(proc_call);
+      } else if (proc_name == "append") {
+          visit_append(proc_call);
+      } else if (proc_name == "drop") {
+          visit_append(proc_call);
       } else {
-          throw NotImplementedException("procedure calls are not supported yet, except write_char, write_str, write_int");
+          throw NotImplementedException("procedure calls are not supported yet, except write_char, write_str, write_int, append, drop");
       }
   }
 

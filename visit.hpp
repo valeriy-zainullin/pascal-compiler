@@ -24,6 +24,7 @@ Ret visit_stmt(Visitor &visitor, pas::ast::Stmt &stmt) {
 #include <enum_stmt.hpp>
 #undef FOR_EACH_STMT
   default:
+    std::cout << "stmt index is " << stmt.index() << std::endl;
     assert(false);
     __builtin_unreachable();
   };

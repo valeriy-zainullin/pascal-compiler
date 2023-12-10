@@ -5,6 +5,7 @@ int main(int argc, char **argv) {
   int result = 0;
   Driver driver;
 
+  try {
   for (int i = 1; i < argc; ++i) {
     if (argv[i] == std::string("-p")) {
       driver.trace_parsing = true;
@@ -17,6 +18,10 @@ int main(int argc, char **argv) {
     } else {
       result = 1;
     }
+  }
+  } catch (const std::exception& exc) {
+      std::cerr << exc.what() << '\n';
+      throw;
   }
 
   return result;

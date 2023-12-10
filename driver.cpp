@@ -30,6 +30,9 @@ bool Driver::parse(const std::string &f) {
   pas::visitor::Printer printer(std::cout);
   printer.visit(ast_.value());
 
+  pas::visitor::Interpreter interpreter;
+  interpreter.interpret(ast_.value());
+
   return true;
 }
 
