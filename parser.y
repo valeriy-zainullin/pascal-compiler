@@ -50,7 +50,7 @@
 
 %locations
 
-%nonassoc IF
+%nonassoc THEN
 %nonassoc ELSE
 
 %define api.token.prefix {TOK_}

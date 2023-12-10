@@ -8,10 +8,17 @@ begin
   write_int(a + b);
   write_char(chr(10));
 
+  write_int(a - b);
+  write_char(chr(10));
   if 2 + 2 = 4 then
-    write_int(a - b);
     if 2 + 1 = 4 then
-       write_int(a + b);
+       write_int(a + b)
+    else begin
+       write_str("No dangling else! Hooray!");
+       write_char(chr(10));
+       write_int(a * b);
+       write_char(chr(10));
+    end;
   write_char(chr(10));  
   write_str("Enter a string: ");
   c := read_str();
