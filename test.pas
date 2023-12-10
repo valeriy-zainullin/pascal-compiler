@@ -1,5 +1,5 @@
 program Hello;
-var a, b : Integer; c : String;
+var a, b : Integer; c, superstring : String;
 begin
   write_str("Enter an integer: ");
   a := read_int();
@@ -31,4 +31,21 @@ begin
 
   if c[strlen(c) - 2] = chr(ord('D')) then
     write_str("We win!");
+
+  write_char(chr(10));
+  for i := 0 to 5 do begin
+     append(superstring, "O"); append(superstring, "le");
+  end;
+  append(superstring, "!");
+  write_str(superstring);
+  write_char(chr(10));
+  
+  while strlen(superstring) <> 0 do
+  begin
+    write_char(superstring[strlen(superstring)-1]);
+    drop(superstring);
+  end;
+  write_char(chr(10));
+
+  write_int(2 * 2 div 4 + 1 mod 8);
 end.

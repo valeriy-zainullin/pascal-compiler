@@ -880,8 +880,8 @@ private:
   }
 
   void visit_drop(pas::ast::ProcCall& proc_call) {
-      if (proc_call.params_.size() != 2) {
-          throw SemanticProblemException("procedure drop accepts only one parameters: String");
+      if (proc_call.params_.size() != 1) {
+          throw SemanticProblemException("procedure drop accepts only one parameter: String");
       }
 
       Value& str_arg = eval_ref(proc_call.params_[0]);
@@ -907,7 +907,7 @@ private:
       } else if (proc_name == "append") {
           visit_append(proc_call);
       } else if (proc_name == "drop") {
-          visit_append(proc_call);
+          visit_drop(proc_call);
       } else {
           throw NotImplementedException("procedure calls are not supported yet, except write_char, write_str, write_int, append, drop");
       }
