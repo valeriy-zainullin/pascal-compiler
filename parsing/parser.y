@@ -7,8 +7,9 @@
 %define parse.assert
 
 %code requires {
-    #include "ast.hpp"
-    #include "get_idx.hpp"
+    #include "ast/ast.hpp"
+    #include "ast/utils/get_idx.hpp"
+
     #include <string>
     #include <utility>
 
@@ -22,7 +23,7 @@
 %define parse.error verbose
 
 %code {
-    #include "ast.hpp"
+    #include "ast/ast.hpp"
     #include "driver.hh"
     #include "location.hh"
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <fwd_stmt.hpp>
+#include <ast/utils/fwd_stmt.hpp>
 
-#include <const_expr.hpp>
-#include <ops.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/ops.hpp>
 
 #include <memory>
 #include <utility> // std::move

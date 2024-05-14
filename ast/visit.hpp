@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stmt.hpp>
+#include <ast/stmt.hpp>
 
-#include <get_idx.hpp>
+#include <ast/utils/get_idx.hpp>
 
 #include <cassert>
 
@@ -21,7 +21,7 @@ Ret visit_stmt(Visitor &visitor, pas::ast::Stmt &stmt) {
   case get_idx(stmt_kind):                                                     \
     visitor.visit(*std::get<get_idx(stmt_kind)>(stmt));                        \
     break;
-#include <enum_stmt.hpp>
+#include "ast/utils/enum_stmt.hpp"
 #undef FOR_EACH_STMT
   default:
     std::cout << "stmt index is " << stmt.index() << std::endl;

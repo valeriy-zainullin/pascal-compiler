@@ -1,8 +1,8 @@
 #pragma once
 
-#include <const_expr.hpp>
-#include <expr.hpp>
-#include <type.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/expr.hpp>
+#include <ast/type.hpp>
 
 #include <optional>
 #include <string>

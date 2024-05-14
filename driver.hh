@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ast.hpp"
+#include "ast/ast.hpp"
 #include "parser.hh"
-#include "scanner.h"
+#include "parsing/scanner.h"
 
 #include <fstream>
 #include <map>
@@ -14,7 +14,7 @@ public:
   Driver();
   std::map<std::string, int> variables;
   int result;
-  bool parse(const std::string &f);
+  std::optional<pas::AST> parse(const std::string &f);
   std::string file;
 
   void scan_begin();
@@ -28,8 +28,6 @@ public:
   Scanner scanner;
   yy::parser parser;
   bool location_debug;
-
-  bool typecheck();
 
 private:
   friend yy::parser; // Allow parser to call set_ast.

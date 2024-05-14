@@ -1,9 +1,9 @@
 #pragma once
 
-#include <const_expr.hpp>
-#include <decl.hpp>
-#include <expr.hpp>
-#include <stmt.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/decl.hpp>
+#include <ast/expr.hpp>
+#include <ast/stmt.hpp>
 
 #include <string>
 #include <utility> // std::move
