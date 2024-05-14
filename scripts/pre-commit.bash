@@ -1,9 +1,16 @@
 #!/bin/bash
 
 # https://stackoverflow.com/a/57791854
-# Works, provided you used command from README.md
+#   Works, provided you used command from README.md
 #   that sets git hook directory.
 
-files=$(echo "$(dirname $0)"/*.cpp "$(dirname $0)"/*.hpp "$(dirname $0)"/*.cc "$(dirname $0)"/*.hh "$(dirname $0)"/*.c "$(dirname $0)"/*.h)
-echo $files
-clang-format --style=LLVM -i $(git diff --cached --name-only)
+exit 0
+
+repository_dir=$(dirname "$0")/..
+
+git diff --cached --name-only | \
+grep -P '.cpp$|.hpp$|.cc$|.hh$|.h$|.c$' | \
+IFS= while read -r file; do
+    echo "$file"
+    clang-format --style=file:"$repository_dir"/.clang-format "$file"
+done

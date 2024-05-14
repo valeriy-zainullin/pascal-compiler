@@ -1,6 +1,6 @@
+#include <fstream>
 #include <iostream>
 #include <string>
-#include <fstream>
 
 #include "ast/visitor.hpp"
 #include "driver.hh"
@@ -33,9 +33,11 @@ int main(int argc, char **argv) {
           return 2;
         }
 
-
-        pas::visitor::Lowerer lowerer(output_path.empty() ? std::cout : std::fstream(output_path));
-        lowerer.visit(ast.value());       break;
+        pas::visitor::Lowerer lowerer(
+            output_path.empty() ? std::cout : std::fstream(output_path + ".ll")
+        );
+        lowerer.visit(ast.value());
+        break;
       }
     }
   } catch (const std::exception &exc) {

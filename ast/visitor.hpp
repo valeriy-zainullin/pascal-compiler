@@ -95,20 +95,20 @@ private:
     stream_ << "ConstExpr";
     depth_ += 1;
     if (const_expr.unary_op_.has_value()) {
-        switch (const_expr.unary_op_.value()) {
-        case pas::ast::UnaryOp::Plus: {
-          stream_ << " unary_op=plus";
-          break;
-        }
-        case pas::ast::UnaryOp::Minus: {
-          stream_ << " unary_op=minus";
-          break;
-        }
-        default:
-          assert(false);
-          __builtin_unreachable();
-        }
+      switch (const_expr.unary_op_.value()) {
+      case pas::ast::UnaryOp::Plus: {
+        stream_ << " unary_op=plus";
+        break;
       }
+      case pas::ast::UnaryOp::Minus: {
+        stream_ << " unary_op=minus";
+        break;
+      }
+      default:
+        assert(false);
+        __builtin_unreachable();
+      }
+    }
     stream_ << '\n';
     visit(const_expr.factor_);
     depth_ -= 1;
@@ -392,57 +392,60 @@ private:
     }
   }
   void visit(pas::ast::Factor &factor) {
-      switch (factor.index()) {
-      case get_idx(pas::ast::FactorKind::Bool): {
-          print_indent();
-          bool value = std::get<bool>(factor);
-          stream_ << "Factor Bool" << (value ? "true" : "false") << '\n';
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::Designator): {
-          visit(std::get<pas::ast::Designator>(factor));
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::Expr): {
-          visit(*std::get<pas::ast::ExprUP>(factor));
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::Negation): {
-          print_indent();
-          stream_ << "Factor Not" << '\n';
-          visit(std::get<pas::ast::NegationUP>(factor)->factor_);
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::Nil): {
-          print_indent();
-          stream_ << "Factor Nil" << '\n';
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::Number): {
-          print_indent();
-          stream_ << "Factor number=" << std::get<int>(factor) << '\n';
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::String): {
-          print_indent();
-          stream_ << "Factor string=\"" << std::get<std::string>(factor) << "\"" << '\n';
-          break;
-      }
-      case get_idx(pas::ast::FactorKind::FuncCall): {
-          visit(*std::get<pas::ast::FuncCallUP>(factor));
-          break;
-      }
-      default: assert(false); __builtin_unreachable();
-      }
+    switch (factor.index()) {
+    case get_idx(pas::ast::FactorKind::Bool): {
+      print_indent();
+      bool value = std::get<bool>(factor);
+      stream_ << "Factor Bool" << (value ? "true" : "false") << '\n';
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::Designator): {
+      visit(std::get<pas::ast::Designator>(factor));
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::Expr): {
+      visit(*std::get<pas::ast::ExprUP>(factor));
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::Negation): {
+      print_indent();
+      stream_ << "Factor Not" << '\n';
+      visit(std::get<pas::ast::NegationUP>(factor)->factor_);
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::Nil): {
+      print_indent();
+      stream_ << "Factor Nil" << '\n';
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::Number): {
+      print_indent();
+      stream_ << "Factor number=" << std::get<int>(factor) << '\n';
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::String): {
+      print_indent();
+      stream_ << "Factor string=\"" << std::get<std::string>(factor) << "\""
+              << '\n';
+      break;
+    }
+    case get_idx(pas::ast::FactorKind::FuncCall): {
+      visit(*std::get<pas::ast::FuncCallUP>(factor));
+      break;
+    }
+    default:
+      assert(false);
+      __builtin_unreachable();
+    }
   }
   void visit(pas::ast::FuncCall &func_call) {
-      print_indent();
-      stream_ << "FuncCall ident=" << func_call.func_ident_ << '\n';
-      depth_ += 1;
-      for (pas::ast::Expr& expr: func_call.params_) {
-          visit(expr);
-      }
-      depth_ -= 1;
+    print_indent();
+    stream_ << "FuncCall ident=" << func_call.func_ident_ << '\n';
+    depth_ += 1;
+    for (pas::ast::Expr &expr : func_call.params_) {
+      visit(expr);
+    }
+    depth_ -= 1;
   }
   void visit(pas::ast::Element &node) {}
   void visit(pas::ast::SubprogDecl &node) {}
@@ -506,16 +509,15 @@ public:
 //   Ok, let's change tactics.
 class NotImplementedVisitor {
 public:
-#define FOR_EACH_STMT(stmt_type, stmt_kind)                 \
-   void visit(stmt_type& stmt) {                           \
-       throw NotImplementedException("not implemented");   \
-   }
+#define FOR_EACH_STMT(stmt_type, stmt_kind)                                    \
+  void visit(stmt_type &stmt) {                                                \
+    throw NotImplementedException("not implemented");                          \
+  }
 #include "ast/utils/enum_stmt.hpp"
 #undef FOR_EACH_STMT
 };
 
-class Lowerer : public NotImplementedVisitor {
-};
+class Lowerer : public NotImplementedVisitor {};
 
 } // namespace visitor
 } // namespace pas
