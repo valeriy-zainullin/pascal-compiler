@@ -159,12 +159,12 @@
 %nterm <pas::ast::PointerType>                  PointerType
 %nterm <std::vector<pas::ast::FieldList>>       FieldListSequence
 %nterm <pas::ast::FieldList>                    FieldList
-%nterm <std::vector<pas::ast::Stmt>>            StatementSequence
 %nterm <std::vector<pas::ast::Stmt>>            StatementList
 %nterm <pas::ast::Stmt>                         Statement
 %nterm <pas::ast::Assignment>                   Assignment
 %nterm <pas::ast::ProcCall>                     ProcedureCall
 %nterm <std::vector<pas::ast::Expr>>            ActualParametersOpt
+%nterm <pas::ast::StmtSeq>                      StatementSequence
 %nterm <pas::ast::IfStmt>                       IfStatement
 %nterm <pas::ast::CaseStmt>                     CaseStatement
 %nterm <std::vector<pas::ast::Case>>            CaseList
@@ -430,7 +430,7 @@ FieldList:            IdentList ":" Type {
                       };
 
 StatementSequence:    BEGIN StatementList END {
-                          $$ = std::move($2);
+                          $$ = pas::ast::StmtSeq(std::move($2));
                       };
 StatementList:        Statement {
                           $$ = std::vector<pas::ast::Stmt>();

@@ -11,6 +11,11 @@ add_link_options(-fsanitize=address,undefined)
 
 find_package(FLEX  2.6 REQUIRED)
 find_package(BISON 2.6 REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
+
+include_directories(${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_LINK_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
 
 BISON_TARGET(
     MyParser
@@ -35,9 +40,15 @@ add_executable(
     main.cpp
     driver.cpp
     ast/ast.cpp
+    ast/visitors/printer.cpp
+    ast/visitors/lowerer.cpp
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}
 )
+
+# https://github.com/FurryAcetylCoA/llvm-project/commit/b1e01f641b0e17ce54e72dc221866da3640b7024
+llvm_config(pascal USE_SHARED support core)
+target_link_libraries(pascal ${LLVM})
 
 add_custom_target(test COMMAND pascal ${CMAKE_CURRENT_LIST_DIR}/test.pas)
 

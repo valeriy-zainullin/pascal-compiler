@@ -1,10 +1,10 @@
 #pragma once
 
-#include <ast/stmt.hpp>
-
-#include <ast/utils/get_idx.hpp>
-
 #include <cassert>
+#include <iostream>
+
+#include <ast/stmt.hpp>
+#include <ast/utils/get_idx.hpp>
 
 namespace pas {
 namespace ast {

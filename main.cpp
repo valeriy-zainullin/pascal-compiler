@@ -2,7 +2,9 @@
 #include <iostream>
 #include <string>
 
-#include "ast/visitor.hpp"
+#include "llvm/IR/LLVMContext.h"
+
+#include "ast/visitors/lowerer.hpp"
 #include "driver.hh"
 
 int main(int argc, char **argv) {
@@ -33,10 +35,9 @@ int main(int argc, char **argv) {
           return 2;
         }
 
-        pas::visitor::Lowerer lowerer(
-            output_path.empty() ? std::cout : std::fstream(output_path + ".ll")
-        );
-        lowerer.visit(ast.value());
+        llvm::LLVMContext context;
+        pas::visitor::Lowerer lowerer(context, argv[i], ast.value());
+
         break;
       }
     }

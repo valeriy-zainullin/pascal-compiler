@@ -10,6 +10,6 @@ git diff --cached --name-only | \
 grep -P '\.cpp$|\.hpp$|\.cc$|\.hh$|\.h$|\.c$' | \
 while IFS= read -r file || [[ -n "$file" ]]; do
     echo "Formatting $file"
-    git add "$file"
     clang-format -i --style=file:"$repository_dir"/.clang-format "$file"
+    git add "$file"
 done

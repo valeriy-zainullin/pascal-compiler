@@ -2,7 +2,7 @@
 
 #include "parser.hh"
 // #include "sema.hpp"
-#include "ast/visitor.hpp"
+#include "ast/visitors/printer.hpp"
 
 Driver::Driver()
     : trace_parsing(false), trace_scanning(false), location_debug(false),

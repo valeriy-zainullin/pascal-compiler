@@ -39,7 +39,7 @@ git checkout llvmorg-18.1.0-rc3 # Тут последняя версия (18.1.0
 
 # rm -rf build
 cmake -S llvm -G Ninja -B build         \
-  -DLLVM_ENABLE_PROJECTS='clang'        \
+  -DLLVM_ENABLE_PROJECTS=''             \
   -DLLVM_TARGETS_TO_BUILD='X86;AArch64' \
   -DCMAKE_BUILD_TYPE=Debug              \
   -DLLVM_BUILD_LLVM_DYLIB=ON            \
