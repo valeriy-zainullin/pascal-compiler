@@ -27,7 +27,7 @@ cmake -B build && make -C build test
 Помощь в разработке приветствуется. В таком случае, пожалуйста, прежде чем
 создавать коммиты в своем форке, запустите из корня репозитория
 ```bash
-git config --local core.hooksPath .githooks/
+ln -sf $(pwd)/scripts/pre-commit.bash .git/hooks/pre-commit
 ```
 Эта команда подключит скрипты для git. В частности, подключит
 автоформатирования кода до коммита.
