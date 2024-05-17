@@ -28,13 +28,17 @@ Lowerer::Lowerer(llvm::LLVMContext &context, const std::string &file_name,
   // source_filename = "top"
   module_uptr_ = std::make_unique<llvm::Module>("top", context_);
 
-  // Заводим глобальное пространство имен.
+  // Заводим пространство имен предопределенных символов.
+  //   Это встроенные типы и встроенные функции.
   pascal_scopes_.emplace_back();
 
   // Add unique original names for basic types.
   pascal_scopes_.back()["Integer"] = TypeKind::Integer;
   pascal_scopes_.back()["Char"] = TypeKind::Char;
   pascal_scopes_.back()["String"] = TypeKind::String;
+
+  // Заводим глобальное пространство имен, его контролирует программа.
+  pascal_scopes_.emplace_back();
 
   // Вообще обработку различных типов данных можно
   //   вынести в отдельные файлы. Чтобы менять ir интерфейс
@@ -81,6 +85,7 @@ void Lowerer::visit_toplevel(pas::ast::Block &block) {
   // llvm::FunctionType выдалется с помощью placement new в памяти внутри
 
   current_func_ = main_func;
+  current_func_builder_ = &main_func_builder;
 
   for (auto &type_def : block.decls_->type_defs_) {
     process_type_def(type_def);
@@ -90,6 +95,9 @@ void Lowerer::visit_toplevel(pas::ast::Block &block) {
   }
 
   visit(block.stmt_seq_);
+
+  current_func_ = nullptr;
+  current_func_builder_ = nullptr;
 }
 
 void Lowerer::visit(pas::ast::StmtSeq &stmt_seq) {
@@ -116,9 +124,37 @@ void Lowerer::process_decls(pas::ast::Declarations &decls) {
 }
 
 void Lowerer::process_type_def(pas::ast::TypeDef &type_def) {}
-void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {}
+
+llvm::Type* Lowerer::get_llvm_type_by_lang_type(std::shared_ptr<Type> type) {
+  switch (type->index()) {
+    case get_idx(TypeKind::Integer): return current_func_builder_->getInt32Ty();
+    case get_idx(TypeKind::Char):    return current_func_builder_->getInt8Ty();
+    case get_idx(TypeKind::String):  return current_func_builder_->getInt8PtrTy();
+    case get_idx(TypeKind::Pointer): return current_func_builder_->getPtrTy();
+
+    default:
+      assert(false);
+      __builtin_unreachable();
+    }
+  }
+
+llvm::AllocaInst* Lowerer::codegen_alloc_value_of_type(std::shared_ptr<Type> type) {
+  return current_func_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
+}
+
+void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {
+  std::shared_ptr<Type> var_type = make_type_from_ast_type(var_decl.type_);
+  for (const std::string &ident : var_decl.ident_list_) {
+    if (pascal_scopes_.back().contains(ident)) {
+      throw pas::ast::SemanticProblemException("identifier is already in use: " +
+                                      ident);
+    }
+    pascal_scopes_.back()[ident] = Variable(codegen_alloc_value_of_type(var_type), std::move(var_type));
+  }
+}
 
 void Lowerer::visit(pas::ast::MemoryStmt &memory_stmt) {}
+
 void Lowerer::visit(pas::ast::RepeatStmt &repeat_stmt) {}
 
 void Lowerer::visit(pas::ast::CaseStmt &case_stmt) {
@@ -136,9 +172,26 @@ void Lowerer::visit(pas::ast::ProcCall &proc_call) {
 
   if (proc_name == "write_int") {
     visit_write_int(proc_call);
-  } throw NotImplementedException(
+  } throw pas::ast::NotImplementedException(
         "procedure calls are not supported yet, except write_int");
   }
+}
+
+void Lowerer::visit_write_int(pas::ast::ProcCall &proc_call) {
+  if (proc_call.params_.size() != 1) {
+    throw pas::ast::SemanticProblemException(
+        "procedure write_int accepts only one parameter of type Integer");
+  }
+
+
+  llvm::Value* arg = eval(proc_call.params_[0]);
+
+  if (arg.index() != get_idx(ValueKind::Integer)) {
+    throw SemanticProblemException(
+        "procedure write_int parameter must be of type Integer");
+  }
+
+  current_func_builder->
 }
 
 void Lowerer::visit(pas::ast::ProcCall &proc_call) {

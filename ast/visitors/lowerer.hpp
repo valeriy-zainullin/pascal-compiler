@@ -45,15 +45,15 @@ private:
     Char = 1,
     String = 2,
 
-    // Pointer to an existing type
-    //        PointerType = 2
+    // Pointer to another value.
+    Pointer = 3
   };
 
   // Always unveiled, synonims are expanded, when type is added to the
   // identifier mapping.
+  class Type;
   using Type = std::variant<std::monostate, std::monostate,
-                            std::monostate>; //, std::shared_ptr<PointerType>>;
-                                             //    struct PointerType {
+                            std::monostate, std::shared_ptr<Type> >;
   //        // Types must be referenced as shared_ptrs:
   //        //   the objects in unordered_map (and plain map, almost any
   //        container)
@@ -64,14 +64,13 @@ private:
   //        std::shared_ptr<Type> ref_type;
   //    };
 
-  enum class ValueKind : size_t {
-    // Base types
-    Integer = 0,
-    Char = 1,
-    String = 2,
+  llvm::AllocaInst* codegen_alloc_value_of_type(std::shared_ptr<Type> type);
+  std::shared_ptr<Type> make_type_from_ast_type(pas::ast::Type &type);
+  llvm::Type* Lowerer::get_llvm_type_by_lang_type(std::shared_ptr<Type> type);
 
-    //          // Pointer to another value.
-    //          Pointer = 3
+  struct Variable {
+    llvm::AllocaInst* allocation;
+    std::shared_ptr<Type> type;
   };
 
 private:
@@ -88,7 +87,9 @@ private:
   void visit(pas::ast::ForStmt &for_stmt);
 
   void visit(pas::ast::Assignment &assignment);
+
   void visit(pas::ast::ProcCall &proc_call);
+  void visit_write_int(pas::ast::ProcCall &proc_call);
 
   void visit(pas::ast::WhileStmt &while_stmt);
 
@@ -105,6 +106,7 @@ private:
   std::unique_ptr<llvm::Module> module_uptr_;
 
   llvm::Function *current_func_ = nullptr;
+  llvm::IRBuilder<> *current_func_builder_ = nullptr;
 
   // static EraseFromParent<llvm::Function> FunctionDeleter;
   // std::unique_ptr<llvm::Function, decltype(FunctionDeleter)> main_func_uptr_;
@@ -116,10 +118,6 @@ private:
   //   указание каких либо действий с регистром влечет перезапись, а не
   //   создание нового регистра. Это и понятно, в IR как таковом нет
   //   областей видимости (scopes), кроме, возможно, функций.
-  std::unordered_map<PascalIdent, std::pair<IRRegister, ValueKind>>
-      cg_local_vars_;
-  std::unordered_map<PascalIdent, std::pair<IRRegister, ValueKind>>
-      cg_global_vars_;
 
   // Вызовы других функций обрабатываем так: название функции паскаля просто
   //   переделывается в ассемблер (mangling). Или даже вставляется как есть,
@@ -127,7 +125,6 @@ private:
   // В этой переменной хранятся функции, которые уже можно вызывать,
   //   при кодогенерации некоторой функции. Т.е. ее саму и всех, кто шел в
   //   файле до нее или был объявлен до нее.
-  std::vector<std::unordered_map<PascalIdent, IRFuncName>> cg_ready_funcs_;
 
   // От прежнего интерпретатора, который вычислял значения, нам нужна только
   // проверка типов.
@@ -138,8 +135,8 @@ private:
   //   выражениях типо 5+2 с обеих сторон числа.
   // Во время проверки типов рекурсивной производится и сама кодонерегация.
   std::vector<
-      std::unordered_map<PascalIdent, std::variant<TypeKind, ValueKind>>>
-      pascal_scopes_;
+      std::unordered_map<PascalIdent, std::variant<std::shared_ptr<Type>, Variable>>
+  > pascal_scopes_;
 
   // Чтобы посмотреть в действии, как работает трансляция, посмотрите видео
   // Андреаса Клинга.
