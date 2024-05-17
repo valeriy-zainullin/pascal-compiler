@@ -120,7 +120,9 @@ void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {}
 
 void Lowerer::visit(pas::ast::MemoryStmt &memory_stmt) {}
 void Lowerer::visit(pas::ast::RepeatStmt &repeat_stmt) {}
-void Lowerer::visit(pas::ast::CaseStmt &case_stmt) {}
+
+void Lowerer::visit(pas::ast::CaseStmt &case_stmt) {
+}
 
 void Lowerer::visit(pas::ast::IfStmt &if_stmt) {}
 
@@ -129,7 +131,20 @@ void Lowerer::visit(pas::ast::EmptyStmt &empty_stmt) {}
 void Lowerer::visit(pas::ast::ForStmt &for_stmt) {}
 
 void Lowerer::visit(pas::ast::Assignment &assignment) {}
-void Lowerer::visit(pas::ast::ProcCall &proc_call) {}
+void Lowerer::visit(pas::ast::ProcCall &proc_call) {
+  const std::string &proc_name = proc_call.proc_ident_;
+
+  if (proc_name == "write_int") {
+    visit_write_int(proc_call);
+  } throw NotImplementedException(
+        "procedure calls are not supported yet, except write_int");
+  }
+}
+
+void Lowerer::visit(pas::ast::ProcCall &proc_call) {
+  
+}
+
 void Lowerer::visit(pas::ast::WhileStmt &while_stmt) {}
 
 } // namespace visitor
