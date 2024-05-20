@@ -27,6 +27,8 @@ public:
   Lowerer(llvm::LLVMContext &context, const std::string &file_name,
           pas::ast::CompilationUnit &cu);
 
+  llvm::Module* get_module();
+
 private:
   MAKE_VISIT_STMT_FRIEND();
 
@@ -46,14 +48,13 @@ private:
     String = 2,
 
     // Pointer to another value.
-    Pointer = 3
+    // Pointer = 3
   };
 
   // Always unveiled, synonims are expanded, when type is added to the
   // identifier mapping.
-  class Type;
-  using Type = std::variant<std::monostate, std::monostate,
-                            std::monostate, std::shared_ptr<Type> >;
+  // using Type = std::variant<std::monostate, std::monostate,
+  //                           std::monostate>;
   //        // Types must be referenced as shared_ptrs:
   //        //   the objects in unordered_map (and plain map, almost any
   //        container)
@@ -64,13 +65,13 @@ private:
   //        std::shared_ptr<Type> ref_type;
   //    };
 
-  llvm::AllocaInst* codegen_alloc_value_of_type(std::shared_ptr<Type> type);
-  std::shared_ptr<Type> make_type_from_ast_type(pas::ast::Type &type);
-  llvm::Type* Lowerer::get_llvm_type_by_lang_type(std::shared_ptr<Type> type);
+  llvm::AllocaInst* codegen_alloc_value_of_type(TypeKind type);
+  TypeKind make_type_from_ast_type(pas::ast::Type &type);
+  llvm::Type* get_llvm_type_by_lang_type(TypeKind type);
 
   struct Variable {
     llvm::AllocaInst* allocation;
-    std::shared_ptr<Type> type;
+    TypeKind type;
   };
 
 private:
@@ -90,6 +91,7 @@ private:
 
   void visit(pas::ast::ProcCall &proc_call);
   void visit_write_int(pas::ast::ProcCall &proc_call);
+  void visit_write_str(pas::ast::ProcCall &proc_call);
 
   void visit(pas::ast::WhileStmt &while_stmt);
 
@@ -135,7 +137,7 @@ private:
   //   выражениях типо 5+2 с обеих сторон числа.
   // Во время проверки типов рекурсивной производится и сама кодонерегация.
   std::vector<
-      std::unordered_map<PascalIdent, std::variant<std::shared_ptr<Type>, Variable>>
+      std::unordered_map<PascalIdent, std::variant<TypeKind, Variable>>
   > pascal_scopes_;
 
   // Чтобы посмотреть в действии, как работает трансляция, посмотрите видео

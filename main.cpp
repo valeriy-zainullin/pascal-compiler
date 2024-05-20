@@ -38,6 +38,15 @@ int main(int argc, char **argv) {
         llvm::LLVMContext context;
         pas::visitor::Lowerer lowerer(context, argv[i], ast.value());
 
+        llvm::Module* llvm_module = lowerer.get_module();
+
+        // Dump LLVM IR
+        std::string s;
+        llvm::raw_string_ostream os(s);
+        llvm_module->print(os, nullptr);
+        os.flush();
+        std::cout << s;
+
         break;
       }
     }

@@ -50,6 +50,6 @@ add_executable(
 llvm_config(pascal USE_SHARED support core)
 target_link_libraries(pascal ${LLVM})
 
-add_custom_target(test COMMAND pascal ${CMAKE_CURRENT_LIST_DIR}/test.pas)
+add_custom_target(test ALL COMMAND pascal ${CMAKE_CURRENT_LIST_DIR}/test.pas)
 
 target_include_directories(pascal PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_BINARY_DIR})

@@ -4,7 +4,6 @@
 #include <string>
 
 namespace pas {
-namespace ast {
 
 // Must write public, otherwise
 //   catch won't catch an exception
@@ -38,5 +37,4 @@ public:
   using DescribedException::DescribedException;
 };
 
-} // namespace ast
 } // namespace pas
