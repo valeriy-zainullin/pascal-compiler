@@ -4,7 +4,10 @@
 #   Works, provided you used command from README.md
 #   that sets git hook directory.
 
+set -e
+
 repository_dir=$(dirname "$0")/../..
+cd "$repository_dir"
 
 git diff --cached --name-only | \
 grep -P '\.cpp$|\.hpp$|\.cc$|\.hh$|\.h$|\.c$' | \

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/IR/LLVMContext.h"
 
 #include "ast/visitors/lowerer.hpp"
@@ -37,8 +39,7 @@ int main(int argc, char **argv) {
 
         llvm::LLVMContext context;
         pas::visitor::Lowerer lowerer(context, argv[i], ast.value());
-
-        llvm::Module* llvm_module = lowerer.get_module();
+        std::unique_ptr<llvm::Module> llvm_module = lowerer.release_module();
 
         // Dump LLVM IR
         std::string s;
@@ -46,6 +47,16 @@ int main(int argc, char **argv) {
         llvm_module->print(os, nullptr);
         os.flush();
         std::cout << s;
+
+        // Interpreter of LLVM IR
+        std::cout << "Running code...\n";
+        llvm::Function *main_func = llvm_module->getFunction("main");
+        llvm::ExecutionEngine *ee =
+            llvm::EngineBuilder(std::move(llvm_module)).create();
+        ee->finalizeObject();
+        std::vector<llvm::GenericValue> noargs;
+        llvm::GenericValue v = ee->runFunction(main_func, noargs);
+        std::cout << "Code was run.\n";
 
         break;
       }

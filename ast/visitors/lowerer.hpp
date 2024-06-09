@@ -27,10 +27,15 @@ public:
   Lowerer(llvm::LLVMContext &context, const std::string &file_name,
           pas::ast::CompilationUnit &cu);
 
-  llvm::Module* get_module();
+  std::unique_ptr<llvm::Module> release_module();
 
 private:
   MAKE_VISIT_STMT_FRIEND();
+
+  llvm::Value *eval(pas::ast::Factor &factor);
+  llvm::Value *eval(pas::ast::Term &term);
+  llvm::Value *eval(pas::ast::SimpleExpr &simple_expr);
+  llvm::Value *eval(pas::ast::Expr &expr);
 
   void visit(pas::ast::CompilationUnit &cu);
   void visit(pas::ast::ProgramModule &pm);
@@ -65,14 +70,16 @@ private:
   //        std::shared_ptr<Type> ref_type;
   //    };
 
-  llvm::AllocaInst* codegen_alloc_value_of_type(TypeKind type);
+  llvm::AllocaInst *codegen_alloc_value_of_type(TypeKind type);
   TypeKind make_type_from_ast_type(pas::ast::Type &type);
-  llvm::Type* get_llvm_type_by_lang_type(TypeKind type);
+  llvm::Type *get_llvm_type_by_lang_type(TypeKind type);
 
   struct Variable {
-    llvm::AllocaInst* allocation;
+    llvm::AllocaInst *allocation;
     TypeKind type;
   };
+
+  std::variant<TypeKind, Variable> *lookup_decl(const std::string &identifier);
 
 private:
   void visit(pas::ast::MemoryStmt &memory_stmt);
@@ -136,9 +143,8 @@ private:
   //   константа (immediate const, типо 5 и 2 в 5+2); не только то, что в
   //   выражениях типо 5+2 с обеих сторон числа.
   // Во время проверки типов рекурсивной производится и сама кодонерегация.
-  std::vector<
-      std::unordered_map<PascalIdent, std::variant<TypeKind, Variable>>
-  > pascal_scopes_;
+  std::vector<std::unordered_map<PascalIdent, std::variant<TypeKind, Variable>>>
+      pascal_scopes_;
 
   // Чтобы посмотреть в действии, как работает трансляция, посмотрите видео
   // Андреаса Клинга.

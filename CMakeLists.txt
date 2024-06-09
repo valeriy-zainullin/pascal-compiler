@@ -48,7 +48,12 @@ add_executable(
 
 # https://github.com/FurryAcetylCoA/llvm-project/commit/b1e01f641b0e17ce54e72dc221866da3640b7024
 llvm_config(pascal USE_SHARED support core)
-target_link_libraries(pascal ${LLVM})
+target_link_libraries(pascal PRIVATE ${LLVM})
+
+add_library(stdlib SHARED ${CMAKE_CURRENT_SOURCE_DIR}/stdlib.cpp)
+llvm_config(stdlib USE_SHARED support core)
+target_link_libraries(stdlib PRIVATE ${LLVM})
+target_link_libraries(pascal PRIVATE stdlib)
 
 add_custom_target(test ALL COMMAND pascal ${CMAKE_CURRENT_LIST_DIR}/test.pas)
 

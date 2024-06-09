@@ -82,7 +82,8 @@
         "ranges": "cpp",
         "text_encoding": "cpp",
         "cfenv": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "*.def": "cpp"
     },
     
     "editor.indentSize": 2,
