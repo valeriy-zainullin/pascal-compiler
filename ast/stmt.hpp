@@ -1,8 +1,8 @@
 #pragma once
 
-#include <const_expr.hpp>
-#include <expr.hpp>
-#include <type.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/expr.hpp>
+#include <ast/type.hpp>
 
 #include <optional>
 #include <string>
@@ -141,12 +141,11 @@ public:
   RepeatStmt &operator=(RepeatStmt &&other) = default;
 
 public:
-  RepeatStmt(std::vector<Stmt> inner_stmts, Expr cond_expr)
-      : inner_stmts_(std::move(inner_stmts)), cond_expr_(std::move(cond_expr)) {
-  }
+  RepeatStmt(StmtSeq stmt_seq, Expr cond_expr)
+      : stmt_seq_(std::move(stmt_seq)), cond_expr_(std::move(cond_expr)) {}
 
 public:
-  std::vector<Stmt> inner_stmts_;
+  StmtSeq stmt_seq_;
   Expr cond_expr_;
 };
 

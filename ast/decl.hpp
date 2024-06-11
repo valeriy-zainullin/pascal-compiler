@@ -1,8 +1,8 @@
 #pragma once
 
-#include <const_expr.hpp>
-#include <stmt.hpp>
-#include <type.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/stmt.hpp>
+#include <ast/type.hpp>
 
 #include <string>
 #include <vector>
@@ -98,7 +98,7 @@ public:
   //   then we'll move them to our fields.
   // If we copy construct, these are just copies,
   //   it's fine to take them over.
-  Block(std::unique_ptr<Declarations> decls, std::vector<Stmt> stmt_seq)
+  Block(std::unique_ptr<Declarations> decls, StmtSeq stmt_seq)
       : decls_(std::move(decls)), stmt_seq_(std::move(stmt_seq)) {}
 
 public:
@@ -107,7 +107,7 @@ public:
   //   We can't store this object in each other as hierarchy requires as there's
   //   a cycle. Have to store a pointer. We can use unique_ptr.
   std::unique_ptr<Declarations> decls_;
-  std::vector<Stmt> stmt_seq_;
+  StmtSeq stmt_seq_;
 };
 
 class ProcDecl {

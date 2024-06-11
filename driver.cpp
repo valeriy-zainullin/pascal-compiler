@@ -1,7 +1,8 @@
 #include "driver.hh"
+
 #include "parser.hh"
 // #include "sema.hpp"
-#include "visitor.hpp"
+#include "ast/visitors/printer.hpp"
 
 Driver::Driver()
     : trace_parsing(false), trace_scanning(false), location_debug(false),
@@ -12,7 +13,7 @@ Driver::Driver()
 
 void Driver::set_ast(pas::AST &&ast) { ast_.emplace(std::move(ast)); }
 
-bool Driver::parse(const std::string &f) {
+std::optional<pas::AST> Driver::parse(const std::string &f) {
   file = f;
 
   // initialize location positions
@@ -20,20 +21,17 @@ bool Driver::parse(const std::string &f) {
   scan_begin();
   parser.set_debug_level(trace_parsing);
   if (parser() != 0) {
-    std::cout << "Parsing error!";
-    return false;
+    std::cerr << "Parsing error!" << std::endl;
+    return {};
   }
   scan_end();
 
   assert(ast_.has_value());
 
-  pas::visitor::Printer printer(std::cout);
+  pas::visitor::Printer printer(std::cerr);
   printer.visit(ast_.value());
 
-  pas::visitor::Interpreter interpreter;
-  interpreter.interpret(ast_.value());
-
-  return true;
+  return std::move(ast_);
 }
 
 // bool Driver::typecheck() {

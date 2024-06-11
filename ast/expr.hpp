@@ -1,9 +1,9 @@
 #pragma once
 
-#include <fwd_stmt.hpp>
+#include <ast/utils/fwd_stmt.hpp>
 
-#include <const_expr.hpp>
-#include <ops.hpp>
+#include <ast/const_expr.hpp>
+#include <ast/ops.hpp>
 
 #include <memory>
 #include <utility> // std::move
@@ -167,8 +167,8 @@ public:
       : start_expr_(std::move(start_expr)), op_(std::move(op)) {}
 
 public:
-  // TODO: refactor rename to simple_expr_. And rename arg in constructor to
-  // simple_expr.
+  // TODO: refactor rename to start_simple_expr_. And rename arg in
+  //   constructor to simple_expr.
   SimpleExpr start_expr_;
   std::optional<Op> op_;
 };
