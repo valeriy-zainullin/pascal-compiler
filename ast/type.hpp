@@ -22,6 +22,7 @@ using PointerTypeUP = std::unique_ptr<PointerType>;
 using RecordTypeUP = std::unique_ptr<RecordType>;
 using NamedTypeUP = std::unique_ptr<NamedType>;
 
+// TODO: удалить, когда не нужно будет.
 enum class TypeKind { Set = 0, Array = 1, Pointer = 2, Record = 3, Named = 4 };
 using Type = std::variant<SetTypeUP, ArrayTypeUP, PointerTypeUP, RecordTypeUP,
                           NamedTypeUP>;

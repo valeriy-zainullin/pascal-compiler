@@ -92,11 +92,18 @@ void Lowerer::visit_toplevel(pas::ast::Block &block) {
 
   // Declare builtin functions.
   //   https://stackoverflow.com/a/22310371
+
   std::vector<llvm::Type *> write_int_args = {main_func_builder.getInt32Ty()};
   llvm::FunctionType *write_int_type = llvm::FunctionType::get(
       main_func_builder.getVoidTy(), write_int_args, false);
   llvm::Function::Create(write_int_type, llvm::Function::ExternalLinkage,
                          "write_int", module_uptr_.get());
+
+  std::vector<llvm::Type *> write_str_args = {main_func_builder.getPtrTy()};
+  llvm::FunctionType *write_str_type = llvm::FunctionType::get(
+      main_func_builder.getVoidTy(), write_str_args, false);
+  llvm::Function::Create(write_str_type, llvm::Function::ExternalLinkage,
+                         "write_str", module_uptr_.get());
 
   // llvm::FunctionType выдалется с помощью placement new в памяти внутри
   //   контекста. Потому освободится вместе с контекстом. А наличие вызова
@@ -385,19 +392,18 @@ llvm::Value *Lowerer::eval(pas::ast::Factor &factor) {
     return current_func_builder_->getInt32(std::get<int>(factor));
   }
   case get_idx(pas::ast::FactorKind::String): {
-    throw NotImplementedException(
-        "string constants are not implemented for now..");
-    // return current_func_builder_->getInt32(std::get<int>(factor));
+    // TODO: change these to be std::string pointers, that are
+    //   manually allocated and deallocated by calling create_str,
+    //   dispose_str.
+    return current_func_builder_->CreateGlobalStringPtr(
+        std::get<std::string>(factor));
     // return Value(std::get<std::string>(factor));
   }
   case get_idx(pas::ast::FactorKind::Nil): {
     throw NotImplementedException("Nil is not supported yet");
   }
   case get_idx(pas::ast::FactorKind::FuncCall): {
-    throw NotImplementedException(
-        "function call evaluation is not supported for now");
-    // return eval(*std::get<pas::ast::FuncCallUP>(factor));
-    break;
+    return eval(*std::get<pas::ast::FuncCallUP>(factor));
   }
 
   case get_idx(pas::ast::FactorKind::Negation): {
@@ -613,6 +619,7 @@ void Lowerer::visit_write_int(pas::ast::ProcCall &proc_call) {
 
   // https://stackoverflow.com/a/22310371
   llvm::Function *write_int_func = module_uptr_->getFunction("write_int");
+  // TODO: make this to be an assert.
   if (write_int_func == nullptr) {
     throw pas::RuntimeProblemException("compiler internal error: write_int was "
                                        "not declared, but it must have been");
@@ -627,14 +634,47 @@ void Lowerer::visit_write_str(pas::ast::ProcCall &proc_call) {
         "procedure write_str accepts only one parameter of type String");
   }
 
-  // Value arg = eval(proc_call.params_[0]);
+  llvm::Value *arg = eval(proc_call.params_[0]);
 
-  // if (arg.index() != get_idx(ValueKind::String)) {
-  //   throw SemanticProblemException(
+  // if (arg.index() != get_idx(TypeKind::String)) {
+  //   throw pas::SemanticProblemException(
   //       "procedure write_str parameter must be of type String");
   // }
 
-  // std::cout << std::get<std::string>(arg);
+  llvm::Function *write_str_func = module_uptr_->getFunction(
+      "write_str"); // TODO: make this to be an assert.
+  if (write_str_func == nullptr) {
+    throw pas::RuntimeProblemException("compiler internal error: write_str was "
+                                       "not declared, but it must have been");
+  }
+  std::vector<llvm::Value *> write_str_args = {arg};
+  current_func_builder_->CreateCall(write_str_func, write_str_args);
+}
+
+// TODO: also return type! And always return llvm::Value along with it's
+//   pascal type.
+// struct pas::Lowerer::Value {
+//    pas::Type type;          // Fully expanded type. No typedefs inside, no
+//    "named types". Goes to it's declaration, it's a property of this thing on
+//    it's own, it will be reused. llvm::Value* evaluation; // Some instructions
+//    or immediate constants.
+// }
+// Check it has specified type: value.type == pas::Type::BasicTypes::Integer
+//   or value.type == pas::type::PointerType(BasicTypes::Char) for char*
+llvm::Value *Lowerer::eval_read_int(pas::ast::FuncCall &func_call) {
+  if (!func_call.params_.empty()) {
+    throw SemanticProblemException(
+        "function read_int doesn't accept parameters");
+  }
+
+  llvm::Function *read_int_func = module_uptr_->getFunction("read_int");
+  // TODO: make this to be an assert.
+  if (read_int_func == nullptr) {
+    throw pas::RuntimeProblemException("compiler internal error: read_int was "
+                                       "not declared, but it must have been");
+  }
+  return current_func_builder_->CreateCall(read_int_func,
+                                           std::vector<llvm::Value *>());
 }
 
 void Lowerer::visit(pas::ast::WhileStmt &while_stmt) {}
