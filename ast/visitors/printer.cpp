@@ -150,7 +150,7 @@ void Printer::visit(pas::ast::StmtSeq &stmt_seq) {
   stream_ << get_indent() << "StmtSeq" << '\n';
 
   for (auto &stmt : stmt_seq.stmts_) {
-    DESCEND(visit_stmt(*this, stmt));
+    visit(stmt);
   }
 }
 
@@ -158,9 +158,9 @@ void Printer::visit(pas::ast::IfStmt &if_stmt) {
   stream_ << get_indent() << "IfStmt" << '\n';
 
   DESCEND(visit(if_stmt.cond_expr_));
-  DESCEND(visit_stmt(*this, if_stmt.then_stmt_));
+  DESCEND(visit(if_stmt.then_stmt_));
   if (if_stmt.else_stmt_.has_value()) {
-    DESCEND(visit_stmt(*this, if_stmt.else_stmt_.value()));
+    DESCEND(visit(if_stmt.else_stmt_.value()));
   }
 }
 
@@ -171,7 +171,7 @@ void Printer::visit(pas::ast::WhileStmt &while_stmt) {
   stream_ << get_indent() << "WhileStmt" << '\n';
 
   DESCEND(visit(while_stmt.cond_expr_));
-  DESCEND(visit_stmt(*this, while_stmt.inner_stmt_));
+  DESCEND(visit(while_stmt.inner_stmt_));
 }
 
 void Printer::visit(pas::ast::RepeatStmt &node) {}
@@ -195,7 +195,7 @@ void Printer::visit(pas::ast::ForStmt &for_stmt) {
 
   DESCEND(visit(for_stmt.start_val_expr_));
   DESCEND(visit(for_stmt.finish_val_expr_));
-  DESCEND(visit_stmt(*this, for_stmt.inner_stmt_));
+  DESCEND(visit(for_stmt.inner_stmt_));
 }
 
 void Printer::visit(pas::ast::Designator &designator) {
@@ -234,6 +234,15 @@ void Printer::visit(pas::ast::DesignatorFieldAccess &field_access) {}
 void Printer::visit(pas::ast::DesignatorPointerAccess &pointer_access) {}
 void Printer::visit(pas::ast::MemoryStmt &node) {}
 void Printer::visit(pas::ast::EmptyStmt &empty_stmt) {}
+
+void Printer::visit(pas::ast::Stmt &stmt) {
+  std::visit(
+      [this](auto &stmt_alt) {
+        // stmt_alt is unique_ptr, so let's dereference it.
+        visit(stmt_alt.get()); // Printer::visit(stmt_alt);
+      },
+      stmt);
+}
 
 void Printer::visit(pas::ast::Expr &expr) {
   if (!expr.op_.has_value()) {

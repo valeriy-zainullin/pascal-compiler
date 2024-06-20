@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -9,8 +7,8 @@
 
 #include "ast/ast.hpp"
 #include "ast/utils/get_idx.hpp"
-#include "ast/visit.hpp"
-#include "ast/visitors/type.hpp"
+#include "support/computed_type.hpp"
+#include "support/scopes.hpp"
 
 namespace pas {
 namespace visitor {
@@ -33,8 +31,9 @@ public:
   // Useful typedefs.
 private:
   struct Value {
-    // Evaluation tree (made of instructions and value declarations) for the
-    // value.
+    // llvm::Value* is actually an
+    //   evaluation tree (made of instructions and value declarations) for the
+    //   value.
     //   For example, to evaluate "f(var_name + 2)" we would have such a tree:
     //   llvm::FunctionCall f
     //     llvm::AddInst
@@ -46,12 +45,38 @@ private:
     //   call
     // TODO: complete this note!
     llvm::Value *value;
-    pas::Type type;
+    pas::ComputedType type;
   };
 
-  struct Variable {
-    llvm::AllocaInst *allocation;
-    pas::Type type;
+  struct Variable : public pas::BasicVariable {
+    llvm::AllocaInst *memory;
+
+    void start_lifetime(llvm::Module *module, llvm::IRBuilder<> *ir_builder) {
+      if (type == BasicType::String) {
+        // Call __create_string to allocate
+        //   a std::string* and initialize it.
+
+        // https://stackoverflow.com/a/22310371
+        llvm::Function *init_func = module->getFunction("__create_string");
+        assert(init_func != nullptr);
+        std::vector<llvm::Value *> args = {memory};
+        ir_builder->CreateCall(init_func, args);
+      }
+    }
+
+    void end_lifetime(llvm::Module *module, llvm::IRBuilder<> *ir_builder) {
+      if (type == BasicType::String) {
+        // Call __destroy_string on std::string*
+        //   to destroy a std::string and
+        //   deallocate the memory.
+
+        // https://stackoverflow.com/a/22310371
+        llvm::Function *deinit_func = module->getFunction("__destroy_string");
+        assert(deinit_func != nullptr);
+        std::vector<llvm::Value *> args = {memory};
+        ir_builder->CreateCall(deinit_func, args);
+      }
+    }
   };
 
   using PascalIdent = std::string;
@@ -100,7 +125,6 @@ private:
   void create_variable(pas::ast::Type type, PascalIdent name);
 
   llvm::AllocaInst *codegen_alloc_value_of_type(pas::Type type);
-  TypeKind make_type_from_ast_type(pas::ast::Type &type);
   llvm::Type *get_llvm_type_by_lang_type(TypeKind type);
 
   // Decl in the name, because may find not only variables,
@@ -124,7 +148,7 @@ private:
 
   // pascal related fields.
 private:
-  std::vector<std::unordered_map<PascalIdent, Variable>> pascal_scopes_;
+  pas::ScopeStack<Variable, TypeDef> scopes_;
 
   // Чтобы посмотреть в действии, как работает трансляция, посмотрите видео
   // Андреаса Клинга.

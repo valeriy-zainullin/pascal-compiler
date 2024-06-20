@@ -12,7 +12,6 @@
 
 #include "ast/ast.hpp"
 #include "ast/utils/get_idx.hpp"
-#include "ast/visit.hpp"
 
 #include "exceptions.hpp"
 
@@ -130,7 +129,7 @@ void Lowerer::visit_toplevel(pas::ast::Block &block) {
 
 void Lowerer::visit(pas::ast::StmtSeq &stmt_seq) {
   for (pas::ast::Stmt &stmt : stmt_seq.stmts_) {
-    visit_stmt(*this, stmt);
+    std::visit(stmt, [this](auto &stmt_variant) { visit(stmt_variant); });
   }
 }
 

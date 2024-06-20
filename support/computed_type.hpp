@@ -10,7 +10,6 @@
 #include "llvm/IR/IRBuilder.h"
 
 #include "exceptions.hpp"
-#include "support/type.hpp"
 
 namespace pas {
 enum class BasicType {
@@ -28,7 +27,7 @@ struct RecordType {
         "Record types aren't supported for now.");
   }
 
-  bool operator==(const RecordType &other) {
+  bool operator==(const RecordType &other) const {
     // Record types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -42,7 +41,7 @@ struct SetType {
     throw pas::NotImplementedException("Set types aren't supported for now.");
   }
 
-  bool operator==(const ArrayType &other) {
+  bool operator==(const SetType &other) const {
     // Set types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -56,7 +55,7 @@ struct ArrayType {
     throw pas::NotImplementedException("Set types aren't supported for now.");
   }
 
-  bool operator==(const ArrayType &other) {
+  bool operator==(const ArrayType &other) const {
     // Array types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -69,22 +68,26 @@ struct PointerType {
   size_t num_ptrs = 0; // Сколько перенаправлений.
   std::variant<BasicType, RecordType, ArrayType, SetType> refd_type;
 
-  bool operator==(const Pointer &other) {
+  bool operator==(const PointerType &other) const {
     if (num_ptrs != other.num_ptrs) {
       return false;
     }
-
-      return std::visit(refd_type, [&other)(auto& lhs_type) {
-        return std::visit(other, [&lhs_type](const auto& rhs_type) {
-      if constexpr (std::is_same_v<decltype(lhs_type), decltype(rhs_type)>) {
-        return lhs_type == rhs_type;
-      } else {
-        // Holding different alternatives -- different types already
-        //   (different categories of types).
-        return false;
-      }
-        })
-      })
+    return std::visit(
+        [&other](const auto &lhs_type) {
+          return std::visit(
+              [&lhs_type](const auto &rhs_type) {
+                if constexpr (std::is_same_v<decltype(lhs_type),
+                                             decltype(rhs_type)>) {
+                  return lhs_type == rhs_type;
+                } else {
+                  // Holding different alternatives -- different types already
+                  //   (different categories of types).
+                  return false;
+                }
+              },
+              other.refd_type);
+        },
+        refd_type);
   }
 };
 
@@ -92,21 +95,29 @@ struct PointerType {
 //   Нельзя сделать forward declaration для using..
 using TypeBase =
     std::variant<BasicType, RecordType, SetType, ArrayType, PointerType>;
-class Type : public TypeBase {
+
+// expanded type (lang type), not ast type (where we have NamedTypes also)
+class ComputedType : public TypeBase {
   using TypeBase::TypeBase;
 
-  bool operator==(const Type &other) const {
-    return std::visit(*this, [&other](const auto &lhs_type) {
-      return std::visit(other, [&lhs_type](const auto &rhs_type) {
-        if constexpr (std::is_same_v<decltype(lhs_type), decltype(rhs_type)>) {
-          return lhs_type == rhs_type;
-        } else {
-          // Holding different alternatives -- different types already
-          //   (different categories of types).
-          return false;
-        }
-      })
-    });
+  bool operator==(const ComputedType &other) const {
+    return std::visit(
+        [&other](const auto &lhs_type) -> bool {
+          return std::visit(
+              [&lhs_type](const auto &rhs_type) -> bool {
+                if constexpr (std::is_same_v<decltype(lhs_type),
+                                             decltype(rhs_type)>) {
+                  return lhs_type == rhs_type;
+                } else {
+                  // Holding different alternatives -- different types already
+                  //   (different categories of types).
+                  return false;
+                }
+              },
+              other);
+        },
+        *this);
   }
-}
+};
+
 } // namespace pas

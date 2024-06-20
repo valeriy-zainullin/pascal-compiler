@@ -13,55 +13,117 @@
 // Еще в паскале есть константы, их тоже можно было бы хранить!
 //   В отдельном векторе, потом реализую. Здорово.
 
+#include <string>
+#include <type_traits>
+#include <unordered_map>
 #include <variant>
 
-struct BasicLifeTimeTracker {
+#include "ast/type.hpp"
+
+#include "support/computed_type.hpp"
+
+namespace pas {
+
+struct BasicTypeDef {
+  std::string name;
+  ComputedType type;
+
+  // Derived struct may also store something.
+};
+
+struct BasicVariable {
+  std::string name;
+  ComputedType type;
+
+  // Derived struct may also store something,
+  //   for example, llvm::AllocaInst* for
+  //   lowerer.
+
   // Вызывается после создания переменной в области видимости
   //   в функции ScopeStack::create_variable.
-  template <typename Variable> void create_variable(Variable &variable) {}
+  // Можно передать дополнительную информацию. В случае
+  //   lowerer, это llvm::IRBuilder, чтобы что-то
+  //   скодонерерировать (выделение памяти, создание объекта).
+  template <typename... Args> void start_lifetime(Args... args) {}
 
   // Вызывается при удалении области видимости в связи
   //   с ее покиданием.
   // В ScopeStack::pop_scope.
-  template <typename Variable> void destroy_variable(Variable &variable) {}
+  // Можно передать дополнительную информацию. В случае
+  //   lowerer, это llvm::IRBuilder, чтобы что-то
+  //   скодонерерировать (например, удаление объекта, освобождение памяти).
+  template <typename... Args> void end_lifetime(Args... args) {}
 
   // Могут быть еще обработчики для констант и для типов, если понадобится.
 };
 
-template <typename TypeInfo, typename VarInfo,
-          typename ConstInfo = std::monostate, typename LifeTimeTracker>
+template <typename TypeDef, typename Variable,
+          typename Constant = std::monostate>
 class ScopeStack {
-  // Полезные типы.
-public:
-  // VarInfo = llvm::AllocaInst* for lowerer.
-  // Could be a value variant for self-written visiting interpreter.
-  struct Variable : public VarInfo {
-    pas::Type type; // expanded type (lang type), not ast type (where we have
-                    // NamedTypes also)
-  };
-
-  // TypeInfo = llvm::Type* for lowerer
-  // Could be std::monostate for self-written visiting interpreter.
-  struct TypeAlias : public TypeInfo {
-    pas::Type type; // expanded type (lang type)
-  }
-
-  struct Constant : public ConstInfo {
-    // pas::ConstType type;
-  }
+  static_assert(std::is_base_of_v<BasicTypeDef, TypeDef>);
+  static_assert(std::is_base_of_v<BasicVariable, Variable>);
+  // static_assert(std::is_base_of_v<BasicConstant, Constant>); // Not
+  // implemented for now.
 
   // Внешние функции.
-  public : void
-           push_scope() {
+public:
+  void push_scope() {
+    scope_vars_.emplace_back();
+    scope_tdefs_.emplace_back();
   }
 
-  void pop_scope() {}
+  template <typename... Args> void pop_scope(Args... args) {
+    assert(!scope_vars_.empty());
+    assert(!scope_tdefs_.empty());
 
-  pas::Type expand_ast_type(pas::ast::Type ast_type) {}
+    for (auto &var_entry : scope_vars_) {
+      Variable &var = var_entry.second;
 
-  void create_variable() {}
+      // No perfect forwarding, because each of these
+      //   must have it's own copy of args. No moving
+      //   involved.
+      var.end_lifetime(args...);
+    }
 
-  void create_typedef() {}
+    // Also iterate on typedefs and call destroy_typedef, if needed.
+
+    scope_vars_.pop_back();
+    scope_tdefs_.pop_back();
+  }
+
+  pas::ComputedType compute_ast_type(pas::ast::Type ast_type) {
+    return pas::ComputedType(BasicType::Integer);
+  }
+
+  template <typename... Args>
+  void store_variable(Variable var, Args &&...args) {
+    if (find_variable(var.name, true) != nullptr ||
+        find_typedef(var.name, true)) {
+      throw pas::SemanticProblemException("redefinition of " + var.name);
+    }
+
+    // Do something specific that is done
+    //   for variable initialization.
+    // For example, create underlying
+    //   std::string for pascal String
+    //   type, if that is your ABI.
+    var.start_lifetime(std::forward(args)...);
+
+    scope_vars_.back().insert(var.name, std::move(var));
+  }
+
+  void store_typedef(TypeDef tdef) {
+    if (find_variable(tdef.name, true) != nullptr ||
+        find_typedef(tdef.name, true)) {
+      throw pas::SemanticProblemException("redefinition of " + tdef.name);
+    }
+
+    // Do something specific that is done
+    //   upon typedef construction..
+    // ltt_.create_typedef(variable);
+
+    scope_tdefs_.back().insert(tdef.name, std::move(tdef));
+  }
 
   // Implement later.
   /*
@@ -69,21 +131,49 @@ public:
 
   }
   */
+
+public:
+  Variable *find_variable(std::string name, bool only_current_scope = false) {
+    for (auto scope_it = scope_vars_.rbegin(); scope_it != scope_vars_.rend();
+         ++scope_it) {
+      auto var_it = scope_it->find(name);
+      if (var_it != scope_it->end()) {
+        return &*var_it;
+      }
+
+      if (only_current_scope) {
+        break;
+      }
+    }
+    return nullptr;
+  }
+
+  Variable *find_typedef(std::string name, bool only_current_scope = false) {
+    for (auto scope_it = scope_tdefs_.rbegin(); scope_it != scope_tdefs_.rend();
+         ++scope_it) {
+      auto tdef_it = scope_it->find(name);
+      if (tdef_it != scope_it->end()) {
+        return &*tdef_it;
+      }
+
+      if (only_current_scope) {
+        break;
+      }
+    }
+    return nullptr;
+  }
+
 private:
   // Из идентификатора в объявляемый объект.
-  using VarsOfScope = std::unordered_set<std::string, Variable>;
-  using TypesOfScope = std::unordered_set<std::string, TypeAlias>;
-  using ConstsOfScope = std::unordered_set<std::string, Constant>;
-
-  // LifeTimeTracker выполняет различные действия при создании или удалении
-  // переменной.
-  //   Например, для строк может создавать и освобождать std::string, который
-  //   находится по указателю.
-  LifeTimeTracker ltt_;
+  using VarsOfScope = std::unordered_map<std::string, Variable>;
+  using TypesOfScope = std::unordered_map<std::string, TypeDef>;
+  using ConstsOfScope = std::unordered_map<std::string, Constant>;
 
   // Scopes -- области видимости.
   //   Разложены на три компоненты: переменные, синонимы типов и константы.
   std::vector<VarsOfScope> scope_vars_;
-  std::vector<TypesOfScope> scope_types_;
+  std::vector<TypesOfScope> scope_tdefs_;
   std::vector<ConstsOfScope> scope_consts_;
 };
+
+} // namespace pas

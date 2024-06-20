@@ -2,7 +2,6 @@
 
 #include "ast/ast.hpp"
 #include "ast/utils/get_idx.hpp"
-#include "ast/visit.hpp"
 
 #include <iostream>
 #include <limits>
@@ -17,8 +16,6 @@ public:
   Printer(std::ostream &stream) : stream_(stream) {}
 
 private:
-  MAKE_VISIT_STMT_FRIEND();
-
   std::string get_indent();
 
   void visit(pas::ast::ProgramModule &pm);
@@ -52,6 +49,7 @@ private:
   void visit(pas::ast::DesignatorPointerAccess &pointer_access);
   void visit(pas::ast::MemoryStmt &node);
   void visit(pas::ast::EmptyStmt &empty_stmt);
+  void visit(pas::ast::Stmt &stmt);
   void visit(pas::ast::Expr &expr);
   void visit(pas::ast::SimpleExpr &simple_expr);
   void visit(pas::ast::Term &term);

@@ -41,7 +41,7 @@ add_executable(
     driver.cpp
     ast/ast.cpp
     ast/visitors/printer.cpp
-    ast/visitors/lowerer.cpp
+    # ast/visitors/lowerer.cpp
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}
 )
