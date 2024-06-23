@@ -57,11 +57,22 @@ struct BasicVariable {
   // Могут быть еще обработчики для констант и для типов, если понадобится.
 };
 
-template <typename TypeDef, typename Variable,
+// TODO: переместить константы до типа, когда они будут реализованы.
+//   Отсортируем по "возрастанию константности".
+//   Переменные живут во время исполнения программы, могут меняться.
+//   Константы живут во время исполнения программы, не могут меняться.
+//   Типы вообще не имеют времени жизни (разве что определения типов
+//   живут, пока область видимости не закончилась, это да). Существуют
+//   при написании, после компиляции стираются и отражаются лишь
+//   в сгенерированном коде и в ABI для взаимодействия со
+//   сгенерированным кодом..
+// Еще хорошо то, что сначала идет более привычное. Компилятор хранит
+//   переменные, это ожидаемо. А вот что типы хранит -- мб неочевиднее..
+template <typename Variable, typename TypeDef,
           typename Constant = std::monostate>
 class ScopeStack {
-  static_assert(std::is_base_of_v<BasicTypeDef, TypeDef>);
   static_assert(std::is_base_of_v<BasicVariable, Variable>);
+  static_assert(std::is_base_of_v<BasicTypeDef, TypeDef>);
   // static_assert(std::is_base_of_v<BasicConstant, Constant>); // Not
   // implemented for now.
 

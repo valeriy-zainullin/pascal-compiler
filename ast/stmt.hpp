@@ -161,7 +161,7 @@ public:
   ForStmt(std::string ident, Expr start_val_expr, WhichWay dir,
           Expr finish_val_expr, Stmt inner_stmt)
       : ident_(std::move(ident)), start_val_expr_(std::move(start_val_expr)),
-        finish_val_expr_(std::move(finish_val_expr)),
+        dir_(dir), finish_val_expr_(std::move(finish_val_expr)),
         inner_stmt_(std::move(inner_stmt)) {}
 
 public:

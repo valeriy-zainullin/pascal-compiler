@@ -14,8 +14,19 @@
 // See the link to the interface example.
 //   https://github.com/llvm/llvm-project/blob/dbe63e3d4dc9e4a53c95a6f8fd24c071d0a603e2/llvm/lib/ExecutionEngine/Interpreter/ExternalFunctions.cpp#L440
 extern "C" llvm::GenericValue
-lle_X_write_int(llvm::FunctionType *FT,
+lle_X_write_int([[maybe_unused]] llvm::FunctionType *FT,
                 llvm::ArrayRef<llvm::GenericValue> args) {
+  // We have to accept this parameter, even though we don't use it,
+  //   because it's supplied by the llvm IR interpreter.
+  // std::ignore = FT;
+  // Now [[maybe_unused]] does the job! And it is specified compared
+  //   to std::ignore, which is not specified outside of std::tie,
+  //   even though still actively used, so should work as expected.
+  // All of these is better that casting to (void), which looks like
+  //   a hack.. Except for C, where it's the only way, but then
+  //   a good project may make a macro like UNREFERENCED_PARAMETER
+  //   in windows api.
+
   llvm::GenericValue GV;
 
   if (args.size() != 1) {
@@ -35,7 +46,7 @@ lle_X_write_int(llvm::FunctionType *FT,
 }
 
 extern "C" llvm::GenericValue
-lle_X_write_str(llvm::FunctionType *FT,
+lle_X_write_str([[maybe_unused]] llvm::FunctionType *FT,
                 llvm::ArrayRef<llvm::GenericValue> args) {
   llvm::GenericValue GV;
 
@@ -56,7 +67,7 @@ lle_X_write_str(llvm::FunctionType *FT,
 }
 
 extern "C" llvm::GenericValue
-lle_X_read_int(llvm::FunctionType *FT,
+lle_X_read_int([[maybe_unused]] llvm::FunctionType *FT,
                llvm::ArrayRef<llvm::GenericValue> args) {
   llvm::GenericValue GV;
 

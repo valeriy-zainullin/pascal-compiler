@@ -20,30 +20,27 @@ namespace visitor {
 
 // auto Lowerer::FunctionDeleter = decltype(Lowerer::FunctionDeleter)();
 
-Lowerer::Lowerer(llvm::LLVMContext &context, const std::string &file_name,
+Lowerer::Lowerer(llvm::LLVMContext &context, const std::string &filepath,
                  pas::ast::CompilationUnit &cu)
     : context_(context) {
 
-  // ; ModuleID = 'top'
-  // source_filename = "top"
-  module_uptr_ = std::make_unique<llvm::Module>("top", context_);
+  // ; ModuleID = filepath
+  // source_filename = filepath
+  module_uptr_ = std::make_unique<llvm::Module>(filepath, context_);
 
   // Заводим пространство имен предопределенных символов.
   //   Это встроенные типы и встроенные функции.
-  pascal_scopes_.emplace_back();
+  scopes_.push_scope();
 
   // Add unique original names for basic types.
-  pascal_scopes_.back()["Integer"] = TypeKind::Integer;
-  pascal_scopes_.back()["Char"] = TypeKind::Char;
-  pascal_scopes_.back()["String"] = TypeKind::String;
+  scopes_.store_typedef({"Integer", BasicType::Integer});
+  scopes_.store_typedef({"Char", BasicType::Char});
+  scopes_.store_typedef({"String", BasicType::String});
 
-  // Заводим глобальное пространство имен, его контролирует программа.
-  pascal_scopes_.emplace_back();
+  // Move builtin types and builtin functions.
+  // declare_builtins();
 
-  // Вообще обработку различных типов данных можно
-  //   вынести в отдельные файлы. Чтобы менять ir интерфейс
-  //   (алгоритмы создания кода, кодирования операций) типа
-  //   локально, а не бегая по этому большому файлу.
+  // Переобъявить встроенные получится. Но это на совести пользователя.
 
   visit(cu);
 }
@@ -57,6 +54,9 @@ void Lowerer::visit(pas::ast::CompilationUnit &cu) { visit(cu.pm_); }
 void Lowerer::visit(pas::ast::ProgramModule &pm) { visit_toplevel(pm.block_); }
 
 void Lowerer::visit_toplevel(pas::ast::Block &block) {
+  // Заводим глобальное пространство имен, туда пойдут все объявления ниже.
+  scopes_.push_scope();
+
   // Decl field should always be there, it can just have
   //   no actual decls inside.
   assert(block.decls_.get() != nullptr);
@@ -129,7 +129,12 @@ void Lowerer::visit_toplevel(pas::ast::Block &block) {
 
 void Lowerer::visit(pas::ast::StmtSeq &stmt_seq) {
   for (pas::ast::Stmt &stmt : stmt_seq.stmts_) {
-    std::visit(stmt, [this](auto &stmt_variant) { visit(stmt_variant); });
+    std::visit(
+        [this](auto &stmt_alt) {
+          // stmt_alt is unique_ptr, so let's dereference it.
+          visit(*stmt_alt.get()); // Printer::visit(stmt_alt);
+        },
+        stmt);
   }
 }
 
@@ -149,98 +154,12 @@ void Lowerer::process_decls(pas::ast::Declarations &decls) {
   }
 }
 
-void Lowerer::process_type_def(pas::ast::TypeDef &type_def) {}
+void Lowerer::process_type_def([[maybe_unused]] pas::ast::TypeDef &type_def) {}
 
-llvm::Type *Lowerer::get_llvm_type_by_lang_type(TypeKind type) {
-  switch (type) {
-  case TypeKind::Integer:
-    return current_func_builder_->getInt32Ty();
-  case TypeKind::Char:
-    return current_func_builder_->getInt8Ty();
-  case TypeKind::String:
-    return current_func_builder_->getInt8Ty()->getPointerTo();
-    // case TypeKind::Pointer: return current_func_builder_->getPtrTy();
-
-  default:
-    assert(false);
-    __builtin_unreachable();
-  }
-}
-
-llvm::AllocaInst *Lowerer::codegen_alloc_value_of_type(TypeKind type) {
-  return current_func_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
-}
-
-pas::visitor::Lowerer::TypeKind
-Lowerer::make_type_from_ast_type(pas::ast::Type &ast_type) {
-  size_t type_index = ast_type.index();
-
-  switch (type_index) {
-  case get_idx(pas::ast::TypeKind::Array):
-  case get_idx(pas::ast::TypeKind::Record):
-  case get_idx(pas::ast::TypeKind::Set): {
-    //      throw NotImplementedException(
-    //          "only pointer types, basic types (Integer, Char) and their
-    //          synonims " "are supported for now");
-    throw pas::NotImplementedException(
-        "only basic types (Integer, Char) and strings are supported for now");
-  }
-  case get_idx(pas::ast::TypeKind::Pointer): {
-    throw pas::NotImplementedException("pointer types are not supported now");
-  }
-
-  //    case get_idx(pas::ast::TypeKind::Pointer): {
-  //      const auto &ptr_type_up = std::get<pas::ast::PointerTypeUP>(type);
-  //      const pas::ast::PointerType &ptr_type = *ptr_type_up;
-  //      if (!ident_to_item_.contains(ptr_type.ref_type_name_)) {
-  //        throw SemanticProblemException(
-  //            "pointer type references an undeclared identifier: " +
-  //            ptr_type.ref_type_name_);
-  //      }
-  //      std::variant<std::shared_ptr<Type>, std::shared_ptr<Value>> item =
-  //          ident_to_item_[ptr_type.ref_type_name_];
-  //      if (item.index() != 0) {
-  //        throw SemanticProblemException(
-  //            "pointer type must reference a type, not a value: " +
-  //            ptr_type.ref_type_name_);
-  //      }
-  //      auto type_item = std::get<std::shared_ptr<Type>>(item);
-  //      auto pointer_type =
-  //      std::make_shared<PointerType>(PointerType{type_item}); auto
-  //      new_type_item = std::make_shared<Type>(pointer_type); return
-  //      new_type_item; break;
-  //    }
-  case get_idx(pas::ast::TypeKind::Named): {
-    const auto &named_type_up = std::get<pas::ast::NamedTypeUP>(ast_type);
-    const pas::ast::NamedType &named_type = *named_type_up;
-    std::optional<std::variant<TypeKind, Variable>> refd_type;
-    for (auto &scope : pascal_scopes_) {
-      if (scope.contains(named_type.type_name_)) {
-        refd_type = scope[named_type.type_name_];
-      }
-    }
-
-    if (!refd_type.has_value()) {
-      throw pas::SemanticProblemException(
-          "named type references an undeclared identifier: " +
-          named_type.type_name_);
-    }
-
-    if (refd_type.value().index() != 0) {
-      throw pas::SemanticProblemException(
-          "named type must reference a type, not a value: " +
-          named_type.type_name_);
-    }
-
-    auto type = std::get<TypeKind>(refd_type.value());
-    return type;
-  }
-  default: {
-    assert(false);
-    __builtin_unreachable();
-  }
-  }
-}
+// llvm::AllocaInst *Lowerer::codegen_alloc_value_of_type(TypeKind type) {
+//   return
+//   current_func_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
+// }
 
 void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {
   TypeKind var_type = make_type_from_ast_type(var_decl.type_);
@@ -254,17 +173,17 @@ void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {
   }
 }
 
-void Lowerer::visit(pas::ast::MemoryStmt &memory_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::MemoryStmt &memory_stmt) {}
 
-void Lowerer::visit(pas::ast::RepeatStmt &repeat_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::RepeatStmt &repeat_stmt) {}
 
-void Lowerer::visit(pas::ast::CaseStmt &case_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::CaseStmt &case_stmt) {}
 
-void Lowerer::visit(pas::ast::IfStmt &if_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::IfStmt &if_stmt) {}
 
-void Lowerer::visit(pas::ast::EmptyStmt &empty_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::EmptyStmt &empty_stmt) {}
 
-void Lowerer::visit(pas::ast::ForStmt &for_stmt) {}
+void Lowerer::visit([[maybe_unused]] pas::ast::ForStmt &for_stmt) {}
 
 void Lowerer::visit(pas::ast::Assignment &assignment) {
   llvm::Value *new_value = eval(assignment.expr_);
@@ -363,18 +282,6 @@ void Lowerer::visit(pas::ast::ProcCall &proc_call) {
     throw pas::NotImplementedException(
         "procedure calls are not supported yet, except write_int");
   }
-}
-
-std::variant<Lowerer::TypeKind, Lowerer::Variable> *
-Lowerer::lookup_decl(const std::string &identifier) {
-  for (auto it = pascal_scopes_.rbegin(); it != pascal_scopes_.rend(); ++it) {
-    auto &scope = *it;
-    auto item_it = scope.find(identifier);
-    if (item_it != scope.end()) {
-      return &item_it->second;
-    }
-  }
-  return nullptr;
 }
 
 // TODO: say where a type assertion is checked in typechecker.

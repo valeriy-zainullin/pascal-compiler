@@ -70,19 +70,5 @@ private:
   size_t depth_ = 0;
 };
 
-// https://stackoverflow.com/a/25066044
-//   Won't work if I have any other functions
-//   with name "visit" in child class.
-//   Ok, let's change tactics.
-// class NotImplementedVisitor {
-// public:
-// #define FOR_EACH_STMT(stmt_type, stmt_kind) \
-//   void visit(stmt_type &stmt) { \
-//     throw NotImplementedException("not implemented"); \
-//   }
-// #include "ast/utils/enum_stmt.hpp"
-// #undef FOR_EACH_STMT
-// };
-
 } // namespace visitor
 } // namespace pas

@@ -31,10 +31,10 @@
   );
 
   void Scanner::UpdateLocation() {
-    if (driver.location_debug) {
-        std::cerr << "Action called " << driver.location << std::endl;
+    if (driver_.location_debug) {
+        std::cerr << "Action called " << driver_.location << std::endl;
     }
-    driver.location.columns(yyleng);
+    driver_.location.columns(yyleng);
   }
 %}
 
@@ -60,26 +60,26 @@ string \"[^"]*\"|\'[^\']*\'
 
 %{
   // A handy shortcut to the location held by the driver.
-  yy::location& loc = driver.location;
-  if (driver.location_debug) {
+  yy::location& loc = driver_.location;
+  if (driver_.location_debug) {
   // Code run each time yylex is called.
     std::cerr << "BEFORE " << loc << std::endl;
   }
   // loc.step();
-  if (driver.location_debug) {
+  if (driver_.location_debug) {
     std::cerr << "AFTER " <<  loc << std::endl;
   }
 %}
 
 {blank}+   {
-    if (driver.location_debug) {
+    if (driver_.location_debug) {
         std::cerr << "Blank matched" << std::endl;
     }
     // loc.step();
 }
 
 \n+ {
-    if (driver.location_debug) {
+    if (driver_.location_debug) {
         std::cerr << "EOL called" << std::endl;
     }
     loc.lines(yyleng);
@@ -103,8 +103,6 @@ string \"[^"]*\"|\'[^\']*\'
 ">="        return yy::parser::make_GEQ       (loc);
 "*"         return yy::parser::make_STAR      (loc);
 "/"         return yy::parser::make_SLASH     (loc); 
-"("         return yy::parser::make_LPAREN    (loc);
-")"         return yy::parser::make_RPAREN    (loc);
 "["         return yy::parser::make_LBRACKET  (loc);
 "]"         return yy::parser::make_RBRACKET  (loc);
 "."         return yy::parser::make_DOT       (loc);
@@ -157,7 +155,7 @@ string \"[^"]*\"|\'[^\']*\'
 {int}       return make_number(yytext, loc);
 {string}    return make_string(yytext, loc);
 {id}       {
-                if (driver.location_debug) {
+                if (driver_.location_debug) {
                     std::cerr << "ID found " << yytext << std::endl;
                 }
                 return yy::parser::make_identifier(yytext, loc);

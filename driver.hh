@@ -22,12 +22,13 @@ public:
 
   bool trace_parsing;
   bool trace_scanning;
+  bool location_debug;
+
   yy::location location;
 
   friend class Scanner;
   Scanner scanner;
   yy::parser parser;
-  bool location_debug;
 
 private:
   friend yy::parser; // Allow parser to call set_ast.

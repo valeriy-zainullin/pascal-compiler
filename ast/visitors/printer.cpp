@@ -123,13 +123,14 @@ void Printer::visit(pas::ast::ConstFactor &const_factor) {
   }
 }
 
-void Printer::visit(pas::ast::Type &node) {}
-void Printer::visit(pas::ast::ArrayType &node) {}
-void Printer::visit(pas::ast::Subrange &node) {}
-void Printer::visit(pas::ast::RecordType &node) {}
-void Printer::visit(pas::ast::SetType &node) {}
-void Printer::visit(pas::ast::PointerType &node) {}
-void Printer::visit(pas::ast::FieldList &node) {}
+// TODO: implement these properly.
+void Printer::visit([[maybe_unused]] pas::ast::Type &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::ArrayType &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::Subrange &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::RecordType &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::SetType &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::PointerType &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::FieldList &node) {}
 
 void Printer::visit(pas::ast::Assignment &assignment) {
   stream_ << get_indent() << "Assignment" << '\n';
@@ -164,8 +165,9 @@ void Printer::visit(pas::ast::IfStmt &if_stmt) {
   }
 }
 
-void Printer::visit(pas::ast::CaseStmt &node) {}
-void Printer::visit(pas::ast::Case &node) {}
+// TODO: implement these properly.
+void Printer::visit([[maybe_unused]] pas::ast::CaseStmt &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::Case &node) {}
 
 void Printer::visit(pas::ast::WhileStmt &while_stmt) {
   stream_ << get_indent() << "WhileStmt" << '\n';
@@ -174,7 +176,7 @@ void Printer::visit(pas::ast::WhileStmt &while_stmt) {
   DESCEND(visit(while_stmt.inner_stmt_));
 }
 
-void Printer::visit(pas::ast::RepeatStmt &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::RepeatStmt &node) {}
 
 void Printer::visit(pas::ast::ForStmt &for_stmt) {
   stream_ << get_indent() << "ForStmt ident=" << for_stmt.ident_ << " ";
@@ -230,16 +232,19 @@ void Printer::visit(pas::ast::DesignatorArrayAccess &array_access) {
   }
 }
 
-void Printer::visit(pas::ast::DesignatorFieldAccess &field_access) {}
-void Printer::visit(pas::ast::DesignatorPointerAccess &pointer_access) {}
-void Printer::visit(pas::ast::MemoryStmt &node) {}
-void Printer::visit(pas::ast::EmptyStmt &empty_stmt) {}
+// TODO: implement these properly.
+void Printer::visit(
+    [[maybe_unused]] pas::ast::DesignatorFieldAccess &field_access) {}
+void Printer::visit(
+    [[maybe_unused]] pas::ast::DesignatorPointerAccess &pointer_access) {}
+void Printer::visit([[maybe_unused]] pas::ast::MemoryStmt &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::EmptyStmt &empty_stmt) {}
 
 void Printer::visit(pas::ast::Stmt &stmt) {
   std::visit(
       [this](auto &stmt_alt) {
         // stmt_alt is unique_ptr, so let's dereference it.
-        visit(stmt_alt.get()); // Printer::visit(stmt_alt);
+        visit(*stmt_alt.get()); // Printer::visit(stmt_alt);
       },
       stmt);
 }
@@ -430,12 +435,12 @@ void Printer::visit(pas::ast::FuncCall &func_call) {
   }
 }
 
-void Printer::visit(pas::ast::Element &node) {}
-void Printer::visit(pas::ast::SubprogDecl &node) {}
-void Printer::visit(pas::ast::ProcDecl &node) {}
-void Printer::visit(pas::ast::FuncDecl &node) {}
-void Printer::visit(pas::ast::ProcHeading &node) {}
-void Printer::visit(pas::ast::FormalParam &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::Element &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::SubprogDecl &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::ProcDecl &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::FuncDecl &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::ProcHeading &node) {}
+void Printer::visit([[maybe_unused]] pas::ast::FormalParam &node) {}
 
 void Printer::visit(pas::ast::CompilationUnit &cu) { visit(cu.pm_); }
 

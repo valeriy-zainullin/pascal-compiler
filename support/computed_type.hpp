@@ -4,12 +4,16 @@
 //   for all different kinds of ast
 //   visitors.
 
-#include <cstddef> // size_t
+#include <cstddef>     // size_t
+#include <type_traits> // std::enable_if.
 #include <variant>
 
 #include "llvm/IR/IRBuilder.h"
 
 #include "exceptions.hpp"
+#include "support/template_utils.hpp"
+
+#include "ast/ast.hpp"
 
 namespace pas {
 enum class BasicType {
@@ -27,7 +31,7 @@ struct RecordType {
         "Record types aren't supported for now.");
   }
 
-  bool operator==(const RecordType &other) const {
+  bool operator==([[maybe_unused]] const RecordType &other) const {
     // Record types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -41,7 +45,7 @@ struct SetType {
     throw pas::NotImplementedException("Set types aren't supported for now.");
   }
 
-  bool operator==(const SetType &other) const {
+  bool operator==([[maybe_unused]] const SetType &other) const {
     // Set types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -55,7 +59,7 @@ struct ArrayType {
     throw pas::NotImplementedException("Set types aren't supported for now.");
   }
 
-  bool operator==(const ArrayType &other) const {
+  bool operator==([[maybe_unused]] const ArrayType &other) const {
     // Array types aren't supported for now.
     //   Deem them as different, so that
     //   it's not possible to assign or do
@@ -100,6 +104,7 @@ using TypeBase =
 class ComputedType : public TypeBase {
   using TypeBase::TypeBase;
 
+public:
   bool operator==(const ComputedType &other) const {
     return std::visit(
         [&other](const auto &lhs_type) -> bool {
@@ -118,6 +123,28 @@ class ComputedType : public TypeBase {
         },
         *this);
   }
+
+  // Allow to compare with bare types, not hidden inside ComputedType.
+  //   For example, to check a value to have a specific constant type
+  //   inside a lowerer or an interpreter.
+  // For example, to do computed_type == BasicType::Integer and etc.
+  template <typename VariantMember>
+  std::enable_if_t<pas::is_variant_member_v<VariantMember, TypeBase>, bool>
+  operator==(const VariantMember &other) const {
+    return std::visit(
+        [&other](const auto &inner_type) -> bool {
+          if constexpr (std::is_same_v<decltype(inner_type), decltype(other)>) {
+            return inner_type == other;
+          } else {
+            // Holding different alternatives -- different types already
+            //   (different categories of types).
+            return false;
+          }
+        },
+        *this);
+  }
+
+  static ComputedType from_ast_type(const pas::ast::Type &ast_type);
 };
 
 } // namespace pas

@@ -38,6 +38,9 @@ int main(int argc, char **argv) {
         }
 
         llvm::LLVMContext context;
+        // Second argument should be absolute path,
+        //   but it's just what was supplied to us
+        //   for now.
         pas::visitor::Lowerer lowerer(context, argv[i], ast.value());
         std::unique_ptr<llvm::Module> llvm_module = lowerer.release_module();
 

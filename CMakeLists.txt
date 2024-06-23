@@ -8,12 +8,19 @@ add_compile_options("-g")
 add_compile_options(-fsanitize=address,undefined)
 add_link_options(-fsanitize=address,undefined)
 
+add_compile_options(-Wall -pedantic -Wextra -Wshadow -Werror)
+
 
 find_package(FLEX  2.6 REQUIRED)
 find_package(BISON 2.6 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
-include_directories(${LLVM_INCLUDE_DIRS})
+# Add llvm to include directories.
+# But make cmake not report warnings from there by saying it is system package.
+# We don't control it, it's supplied by a system package. And even then
+#   every system will most likely have mostly the same llvm headers,
+#   because distro team compile it from the same sources.. 
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LINK_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -41,7 +48,10 @@ add_executable(
     driver.cpp
     ast/ast.cpp
     ast/visitors/printer.cpp
-    # ast/visitors/lowerer.cpp
+    ast/visitors/lowerer.cpp
+    ast/visitors/lowerer/llvm_type.cpp
+    support/computed_type.cpp
+    
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}
 )

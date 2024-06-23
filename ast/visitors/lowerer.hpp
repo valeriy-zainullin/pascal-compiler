@@ -23,7 +23,8 @@ public:
     llvm::InitializeNativeTargetAsmPrinter();
   }
 
-  Lowerer(llvm::LLVMContext &context, const std::string &file_name,
+  // filepath is absolute path.
+  Lowerer(llvm::LLVMContext &context, const std::string &filepath,
           pas::ast::CompilationUnit &cu);
 
   std::unique_ptr<llvm::Module> release_module();
@@ -79,6 +80,10 @@ private:
     }
   };
 
+  // Пока не нужно хранить дополнительную информацию рядом с
+  //   объявлением типа.
+  using TypeDef = pas::BasicTypeDef;
+
   using PascalIdent = std::string;
 
   // evalution functions for expressions.
@@ -124,8 +129,7 @@ private:
 private:
   void create_variable(pas::ast::Type type, PascalIdent name);
 
-  llvm::AllocaInst *codegen_alloc_value_of_type(pas::Type type);
-  llvm::Type *get_llvm_type_by_lang_type(TypeKind type);
+  llvm::Type *get_llvm_type(const pas::ComputedType &lang_type);
 
   // Decl in the name, because may find not only variables,
   //   but different kind of things. TODO: make a common name for them.
