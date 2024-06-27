@@ -5,76 +5,78 @@
 #include "ast/ast.hpp"
 #include "support/scopes.hpp"
 
-pas::visitor::Lowerer::TypeKind
-Lowerer::make_type_from_ast_type(pas::ast::Type &ast_type) {
-  size_t type_index = ast_type.index();
+// pas::visitor::Lowerer::TypeKind
+// Lowerer::make_type_from_ast_type(pas::ast::Type &ast_type) {
+//   size_t type_index = ast_type.index();
 
-  switch (type_index) {
-  case get_idx(pas::ast::TypeKind::Array):
-  case get_idx(pas::ast::TypeKind::Record):
-  case get_idx(pas::ast::TypeKind::Set): {
-    //      throw NotImplementedException(
-    //          "only pointer types, basic types (Integer, Char) and their
-    //          synonims " "are supported for now");
-    throw pas::NotImplementedException(
-        "only basic types (Integer, Char) and strings are supported for now");
-  }
-  case get_idx(pas::ast::TypeKind::Pointer): {
-    throw pas::NotImplementedException("pointer types are not supported now");
-  }
+//   switch (type_index) {
+//   case get_idx(pas::ast::TypeKind::Array):
+//   case get_idx(pas::ast::TypeKind::Record):
+//   case get_idx(pas::ast::TypeKind::Set): {
+//     //      throw NotImplementedException(
+//     //          "only pointer types, basic types (Integer, Char) and their
+//     //          synonims " "are supported for now");
+//     throw pas::NotImplementedException(
+//         "only basic types (Integer, Char) and strings are supported for
+//         now");
+//   }
+//   case get_idx(pas::ast::TypeKind::Pointer): {
+//     throw pas::NotImplementedException("pointer types are not supported
+//     now");
+//   }
 
-  //    case get_idx(pas::ast::TypeKind::Pointer): {
-  //      const auto &ptr_type_up = std::get<pas::ast::PointerTypeUP>(type);
-  //      const pas::ast::PointerType &ptr_type = *ptr_type_up;
-  //      if (!ident_to_item_.contains(ptr_type.ref_type_name_)) {
-  //        throw SemanticProblemException(
-  //            "pointer type references an undeclared identifier: " +
-  //            ptr_type.ref_type_name_);
-  //      }
-  //      std::variant<std::shared_ptr<Type>, std::shared_ptr<Value>> item =
-  //          ident_to_item_[ptr_type.ref_type_name_];
-  //      if (item.index() != 0) {
-  //        throw SemanticProblemException(
-  //            "pointer type must reference a type, not a value: " +
-  //            ptr_type.ref_type_name_);
-  //      }
-  //      auto type_item = std::get<std::shared_ptr<Type>>(item);
-  //      auto pointer_type =
-  //      std::make_shared<PointerType>(PointerType{type_item}); auto
-  //      new_type_item = std::make_shared<Type>(pointer_type); return
-  //      new_type_item; break;
-  //    }
-  case get_idx(pas::ast::TypeKind::Named): {
-    const auto &named_type_up = std::get<pas::ast::NamedTypeUP>(ast_type);
-    const pas::ast::NamedType &named_type = *named_type_up;
-    std::optional<std::variant<TypeKind, Variable>> refd_type;
-    for (auto &scope : pascal_scopes_) {
-      if (scope.contains(named_type.type_name_)) {
-        refd_type = scope[named_type.type_name_];
-      }
-    }
+//   //    case get_idx(pas::ast::TypeKind::Pointer): {
+//   //      const auto &ptr_type_up = std::get<pas::ast::PointerTypeUP>(type);
+//   //      const pas::ast::PointerType &ptr_type = *ptr_type_up;
+//   //      if (!ident_to_item_.contains(ptr_type.ref_type_name_)) {
+//   //        throw SemanticProblemException(
+//   //            "pointer type references an undeclared identifier: " +
+//   //            ptr_type.ref_type_name_);
+//   //      }
+//   //      std::variant<std::shared_ptr<Type>, std::shared_ptr<Value>> item =
+//   //          ident_to_item_[ptr_type.ref_type_name_];
+//   //      if (item.index() != 0) {
+//   //        throw SemanticProblemException(
+//   //            "pointer type must reference a type, not a value: " +
+//   //            ptr_type.ref_type_name_);
+//   //      }
+//   //      auto type_item = std::get<std::shared_ptr<Type>>(item);
+//   //      auto pointer_type =
+//   //      std::make_shared<PointerType>(PointerType{type_item}); auto
+//   //      new_type_item = std::make_shared<Type>(pointer_type); return
+//   //      new_type_item; break;
+//   //    }
+//   case get_idx(pas::ast::TypeKind::Named): {
+//     const auto &named_type_up = std::get<pas::ast::NamedTypeUP>(ast_type);
+//     const pas::ast::NamedType &named_type = *named_type_up;
+//     std::optional<std::variant<TypeKind, Variable>> refd_type;
+//     for (auto &scope : pascal_scopes_) {
+//       if (scope.contains(named_type.type_name_)) {
+//         refd_type = scope[named_type.type_name_];
+//       }
+//     }
 
-    if (!refd_type.has_value()) {
-      throw pas::SemanticProblemException(
-          "named type references an undeclared identifier: " +
-          named_type.type_name_);
-    }
+//     if (!refd_type.has_value()) {
+//       throw pas::SemanticProblemException(
+//           "named type references an undeclared identifier: " +
+//           named_type.type_name_);
+//     }
 
-    if (refd_type.value().index() != 0) {
-      throw pas::SemanticProblemException(
-          "named type must reference a type, not a value: " +
-          named_type.type_name_);
-    }
+//     if (refd_type.value().index() != 0) {
+//       throw pas::SemanticProblemException(
+//           "named type must reference a type, not a value: " +
+//           named_type.type_name_);
+//     }
 
-    auto type = std::get<TypeKind>(refd_type.value());
-    return type;
-  }
-  default: {
-    assert(false);
-    __builtin_unreachable();
-  }
-  }
-}
+//     auto type = std::get<TypeKind>(refd_type.value());
+//     return type;
+//   }
+//   default: {
+//     assert(false);
+//     __builtin_unreachable();
+//   }
+//   }
+// }
 
 // using Type = std::variant<SetTypeUP, ArrayTypeUP, PointerTypeUP,
 // RecordTypeUP,
