@@ -2,12 +2,15 @@
 
 #include "ast/visitors/lowerer.hpp"
 
+namespace pas {
+namespace visitor {
+
 LowererErrorOr<void> Lowerer::visit(pas::ast::CompilationUnit &cu) {
-  TRY(visit(cu.pm_));
+  return visit(cu.pm_);
 }
 
 LowererErrorOr<void> Lowerer::visit(pas::ast::ProgramModule &pm) {
-  TRY(visit_toplevel(pm.block_));
+  return visit_toplevel(pm.block_);
 }
 
 LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
@@ -82,4 +85,9 @@ LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
 
   current_func_ = nullptr;
   current_func_builder_ = nullptr;
+
+  return {}; // Return some ok value (std::monostate).
 }
+
+} // namespace visitor
+} // namespace pas

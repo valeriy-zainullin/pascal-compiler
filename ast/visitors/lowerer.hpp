@@ -96,13 +96,23 @@ private:
 
   // evalution functions for expressions.
 private:
-  LowererErrorOr<llvm::Value *> eval(pas::ast::FuncCall &func_call);
-  LowererErrorOr<llvm::Value *> eval(pas::ast::Factor &factor);
-  LowererErrorOr<llvm::Value *> eval(pas::ast::Term &term);
-  LowererErrorOr<llvm::Value *> eval(pas::ast::SimpleExpr &simple_expr);
-  LowererErrorOr<llvm::Value *> eval(pas::ast::Expr &expr);
+  // TODO: add const to all references to ast.
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::FuncCall &func_call);
+  LowererErrorOr<llvm::Value *> eval(bool value);
+  LowererErrorOr<llvm::Value *> eval(int value);
+  LowererErrorOr<llvm::Value *> eval(const std::string value);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Nil &value);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Negation &value);
 
-  LowererErrorOr<llvm::Value *> eval_read_int(pas::ast::FuncCall &func_call);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Factor &factor);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Term &term);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::SimpleExpr &simple_expr);
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Expr &expr);
+
+  LowererErrorOr<llvm::Value *>
+  eval_read_int(const pas::ast::FuncCall &func_call);
+
+  LowererErrorOr<llvm::Value *> eval(const pas::ast::Designator &value);
 
   // visit functions for the toplevel scope.
 private:

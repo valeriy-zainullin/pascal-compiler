@@ -50,6 +50,8 @@ add_executable(
     ast/visitors/printer.cpp
     ast/visitors/lowerer/lowerer.cpp
     ast/visitors/lowerer/llvm_type.cpp
+    ast/visitors/lowerer/visit_toplevel.cpp
+    ast/visitors/lowerer/eval_expr.cpp
     
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}

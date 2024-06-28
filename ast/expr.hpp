@@ -95,8 +95,8 @@ class FuncCall;
 using NegationUP = std::unique_ptr<Negation>;
 using FuncCallUP = std::unique_ptr<FuncCall>;
 
-using Factor = std::variant<std::string, int, bool, std::monostate, Designator,
-                            ExprUP, NegationUP, FuncCallUP>;
+using Factor = std::variant<std::string, int, bool, Nil, Designator, ExprUP,
+                            NegationUP, FuncCallUP>;
 
 class Negation {
 public:

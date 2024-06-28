@@ -13,10 +13,10 @@ enum class ConstFactorKind : size_t {
   Identifier = 0,
   Number = 1,
   Bool = 2,
-  Nil = 3
+  Nil = 3,
 };
 
-using ConstFactor = std::variant<std::string, int, bool, std::monostate>;
+using ConstFactor = std::variant<std::string, int, bool, pas::ast::Nil>;
 
 class ConstExpr {
 public:

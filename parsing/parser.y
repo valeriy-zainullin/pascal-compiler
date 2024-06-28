@@ -376,7 +376,7 @@ ConstFactor:          identifier {
                           $$ = pas::ast::ConstFactor(std::in_place_type<bool>, false);
                       }
 |                     NIL {
-                          $$ = pas::ast::ConstFactor(std::in_place_type<std::monostate>);
+                          $$ = pas::ast::ConstFactor(pas::ast::Nil());
                       };
 Type:                 identifier {
                           $$ = std::make_unique<pas::ast::NamedType>(std::move($1));
@@ -656,7 +656,7 @@ Factor:               number {
                           $$ = false;
                       }
 |                     NIL {
-                          $$ = std::monostate();
+                          $$ = pas::ast::Nil();
                       }
 |                     Designator {
                           $$ = std::move($1);

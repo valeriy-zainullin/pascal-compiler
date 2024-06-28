@@ -33,8 +33,44 @@ public:
   //   copy-constructible and move-constructible.
 
   ErrorOr(ErrorType error) : variant_(std::move(error)) {}
-
   ErrorOr(ValueType value) : variant_(std::move(value)) {}
+
+  // To construct ErrorOr of a module from an error of a submodule.
+  // For example, to construct pas::LowererErrorOr<...> from
+  //   pas::ScopeStackError.
+  //   Otherwise compiler has to do two user-defined conversions:
+  //   pas::ScopeStackError -> pas::LowererError -> pas::LowererErrorOr.
+  //   Not gonna happen, standard says only one user-defined constructor
+  //   and only one user-defined conversion functions. We have two
+  //   user-defined constructors here.
+  // This one goes immediately from pas::ScopeStackError -> pas::LowererErrorOr.
+  //   And then does the conversion of the first arrow inside.
+  template <typename ErrorTypeConvertible>
+  ErrorOr(
+      ErrorTypeConvertible error_convertible,
+      std::enable_if_t<std::is_constructible_v<ErrorType, ErrorTypeConvertible>,
+                       std::monostate> = std::monostate())
+      : ErrorOr(ErrorType(std::move(error_convertible))) {}
+
+  // The constructor above is tried for llvm::ConstantInt*, if
+  //   we have llvm::Value*. llvm::ConstantInt* is implicitly
+  //   convertible to llvm::Value*, but because there is a
+  //   template, compiler tries to instantiate it and
+  //   doesn't perform any implicit conversions.
+  // Why do implicit conversions if non-implicit scenario
+  //   is possible?
+  // Let's write another constructor for implicitly
+  //   convertible values. Now for ValueType.
+  // These types must be from different hierarchies!
+  //   So that both constructors may be applicable
+  //   and it'll be a compilation error due to
+  //   ambiguity.
+  template <typename ValueTypeConvertible>
+  ErrorOr(
+      ValueTypeConvertible value_convertible,
+      std::enable_if_t<std::is_constructible_v<ValueType, ValueTypeConvertible>,
+                       std::monostate> = std::monostate())
+      : ErrorOr(ValueType(std::move(value_convertible))) {}
 
   ErrorOr() : variant_(ValueType()) {}
   ErrorOr(const ErrorOr &other) = default;
@@ -102,5 +138,5 @@ class ErrorOr<ErrorType, void> : public ErrorOr<ErrorType, std::monostate> {
     if (!result) {                                                             \
       return result.release_error();                                           \
     }                                                                          \
-    return result.release_value();                                             \
+    result.release_value();                                                    \
   })

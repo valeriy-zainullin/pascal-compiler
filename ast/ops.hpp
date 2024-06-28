@@ -16,5 +16,7 @@ enum class RelOp {
   In
 };
 
+struct Nil {};
+
 } // namespace ast
 } // namespace pas

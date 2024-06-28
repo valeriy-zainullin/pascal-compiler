@@ -221,6 +221,8 @@ public:
                                   " construction and should never be deleted.");
 
     scope_tdefs_.back()[std::string(tdef.name)] = std::move(tdef);
+
+    return {};
   }
 
   // Implement later.

@@ -10,9 +10,10 @@
   assert((expr) && msg);                                                       \
   __builtin_assume(expr);
 #elif defined(__GNUC__)
-#define ASSERT(expr, msg)                                                      \
-  assert((expr) && msg);                                                       \
-  __builtin_expect(bool(expr), 1);
+#define ASSERT(expr, msg) assert((expr) && msg);
+// Looks like __builtin_expect only works for if statements,
+//   because I get "statement has no effect" error for this line.
+//   __builtin_expect(bool(expr), 1);
 #elif defined(_MSC_VER)
 #define ASSERT(expr, msg)                                                      \
   assert((expr) && msg);                                                       \

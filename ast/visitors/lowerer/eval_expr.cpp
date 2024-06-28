@@ -1,17 +1,121 @@
 #include "ast/visitors/lowerer.hpp"
 
+#include "support/error.hpp"
+
+namespace pas {
+namespace visitor {
+
 // TODO: delete all these enums with numbers later. First refactor
 //   to std::visit everything that uses them.
 
-LowererErrorOR<llvm::Value *> Lowerer::eval(bool value) {
+LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Expr &expr) {
+  llvm::Value *value = TRY(eval(expr.start_expr_));
+  if (expr.op_.has_value()) {
+    const pas::ast::Expr::Op &op = expr.op_.value();
+    switch (op.rel) {
+    case pas::ast::RelOp::Equal: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpEQ(value, rhs_value);
+    }
+    case pas::ast::RelOp::GreaterEqual: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpSGE(value, rhs_value);
+    }
+    case pas::ast::RelOp::Greater: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpSGT(value, rhs_value);
+    }
+    case pas::ast::RelOp::LessEqual: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpSLE(value, rhs_value);
+    }
+    case pas::ast::RelOp::Less: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpSLT(value, rhs_value);
+    }
+    case pas::ast::RelOp::NotEqual: {
+      llvm::Value *rhs_value = TRY(eval(op.expr));
+      return current_func_builder_->CreateICmpNE(value, rhs_value);
+    }
+    case pas::ast::RelOp::In: {
+      // Dispose "value" here.
+      throw NotImplementedException("relation \"in\" is not supported");
+    }
+    default:
+      assert(false);
+      __builtin_unreachable();
+    }
+  }
+  return value;
+}
+
+LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Term &term) {
+  llvm::Value *value = TRY(eval(term.start_factor_));
+  for (const pas::ast::Term::Op &op : term.ops_) {
+    // if (value.index() != 0) {
+    //   throw SemanticProblemException("can only do math with integer type");
+    // }
+    llvm::Value *rhs_value = TRY(eval(op.factor));
+    // if (rhs_value.index() != 0) {
+    //   throw SemanticProblemException("can only do math with integer type");
+    // }
+    switch (op.op) {
+    case pas::ast::MultOp::And: {
+      value = current_func_builder_->CreateLogicalAnd(value, rhs_value);
+      break;
+    }
+    case pas::ast::MultOp::IntDiv: {
+      value = current_func_builder_->CreateSDiv(value, rhs_value);
+      break;
+    }
+    case pas::ast::MultOp::Modulo: {
+      value = current_func_builder_->CreateSRem(value, rhs_value);
+      break;
+    }
+    case pas::ast::MultOp::Multiply: {
+      // nsw, nuw and etc.
+      //   https://stackoverflow.com/a/61210926
+      value = current_func_builder_->CreateMul(value, rhs_value);
+      break;
+    }
+    case pas::ast::MultOp::RealDiv: {
+      throw NotImplementedException("real numbers are not supported");
+    }
+    default:
+      assert(false);
+      __builtin_unreachable();
+    }
+  }
+  return value;
+}
+
+LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Factor &factor) {
+  return std::visit(
+      [this](const auto &alternative) -> auto {
+        if constexpr (is_instance_of_v<
+                          std::remove_cvref_t<decltype(alternative)>,
+                          std::unique_ptr>) {
+          // For pas::ast::ExprUP, pas::ast::NegationUP and
+          // pas::ast::FuncCallUP.
+          //   Implementations of eval for these functions are down below.
+          // // eval(const pas::ast::Expr&)
+          return eval(*alternative);
+        } else {
+          return eval(alternative);
+        }
+      },
+      factor);
+}
+
+LowererErrorOr<llvm::Value *> Lowerer::eval(bool value) {
   // No dedicated bool type for now for simplicity
   //   (I don't have much time, too many things to do).
-  return current_func_builder_->getInt1(std::get<bool>(factor));
+  return current_func_builder_->getInt1(value);
 }
 
 // TODO: make this int32_t in ast, here and in other visitors.
 LowererErrorOr<llvm::Value *> Lowerer::eval(int value) {
-  return current_func_builder_->getInt32(std::get<int>(factor));
+  return current_func_builder_->getInt32(value);
 }
 
 // TODO: annotate it is string as a string literal. So return not
@@ -38,9 +142,8 @@ Lowerer::eval([[maybe_unused]] const pas::ast::Nil &value) {
   throw NotImplementedException("Nil is not supported yet");
 }
 
-LowererErrorOr<llvm::Value *>
-Lowerer::eval([[maybe_unused]] const pas::ast::Negation &value) {
-  llvm::Value *inner_value = eval(value.factor_);
+LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Negation &value) {
+  llvm::Value *inner_value = TRY(eval(value.factor_));
   // if (inner_value.index() != 0) {
   //   throw SemanticProblemException(
   //       "Negation is only applicable to integer types and boolean");
@@ -50,22 +153,17 @@ Lowerer::eval([[maybe_unused]] const pas::ast::Negation &value) {
   return current_func_builder_->CreateNot(inner_value);
 }
 
-LowererErrorOr<llvm::Value *> Lowerer::eval(pas::ast::Designator &value) {
-  auto &designator = std::get<pas::ast::Designator>(factor);
-  // TODO: check if item with identifier exists in the first place!!
-  // IMPORTANT!
-  std::variant<TypeKind, Variable> *decl = lookup_decl(designator.ident_);
-  if (decl == nullptr) {
-    throw SemanticProblemException("declaration not found: " +
-                                   designator.ident_);
-  }
-  if (decl->index() != 1) {
-    throw SemanticProblemException(
-        "designator must reference a value, not a type: " + designator.ident_);
-  }
-  llvm::Value *base_value = variable.memory;
+LowererErrorOr<llvm::Value *>
+Lowerer::eval(const pas::ast::Designator &designator) {
+  TRY(scopes_.check_ident_type(designator.ident_, IdentType::Variable));
+  auto var = scopes_.find_var(designator.ident_);
+  ASSERT(var != nullptr, "check_ident_type above checks identifier is defined "
+                         "and it is a variable");
 
-  for (pas::ast::DesignatorItem &item : designator.items_) {
+  llvm::Value *base_value = var->memory;
+
+  for ([[maybe_unused]] const pas::ast::DesignatorItem &item :
+       designator.items_) {
     throw NotImplementedException(
         "designator element access is not supported for now!");
     //   switch (item.index()) {
@@ -109,76 +207,20 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(pas::ast::Designator &value) {
     //   }
     //   }
   }
-  return current_func_builder_->CreateLoad(
-      get_llvm_type_by_lang_type(variable.type), base_value, designator.ident_);
+  // TODO: don't forget to change type, when traversing DesignatorItems above.
+  return current_func_builder_->CreateLoad(get_llvm_type(var->type), base_value,
+                                           designator.ident_);
 }
 
-LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Factor &factor) {
-  return std::visit(
-      [this](const auto &alternative) {
-        if constexpr (std::is_same_v<decltype(alternative), pas::ast::ExprUP>) {
-          return eval(*alternative); // eval(const pas::ast::Expr&), above
-        } else if (std::is_same_v<decltype(alternative),
-                                  pas::ast::NegationUP>) {
-          return eval(*alternative); // eval(const pas::ast::Negation&), above
-        } else if (std::is_same_v<decltype(alternative),
-                                  pas::ast::FuncCallUP>) {
-          return eval(*alternative); // eval(const pas::ast::FuncCall&), above
-        } else {
-          return eval(alternative);
-        }
-      },
-      factor);
-}
-
-llvm::Value *Lowerer::eval(pas::ast::Term &term) {
-  llvm::Value *value = eval(term.start_factor_);
-  for (pas::ast::Term::Op &op : term.ops_) {
-    // if (value.index() != 0) {
-    //   throw SemanticProblemException("can only do math with integer type");
-    // }
-    llvm::Value *rhs_value = eval(op.factor);
-    // if (rhs_value.index() != 0) {
-    //   throw SemanticProblemException("can only do math with integer type");
-    // }
-    switch (op.op) {
-    case pas::ast::MultOp::And: {
-      value = current_func_builder_->CreateLogicalAnd(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::IntDiv: {
-      value = current_func_builder_->CreateSDiv(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::Modulo: {
-      value = current_func_builder_->CreateSRem(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::Multiply: {
-      // nsw, nuw and etc.
-      //   https://stackoverflow.com/a/61210926
-      value = current_func_builder_->CreateMul(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::RealDiv: {
-      throw NotImplementedException("real numbers are not supported");
-    }
-    default:
-      assert(false);
-      __builtin_unreachable();
-    }
-  }
-  return value;
-}
-
-llvm::Value *Lowerer::eval(pas::ast::SimpleExpr &simple_expr) {
+LowererErrorOr<llvm::Value *>
+Lowerer::eval(const pas::ast::SimpleExpr &simple_expr) {
   // NOTE: unary op is ignored for now.
-  llvm::Value *value = eval(simple_expr.start_term_);
-  for (pas::ast::SimpleExpr::Op &op : simple_expr.ops_) {
+  llvm::Value *value = TRY(eval(simple_expr.start_term_));
+  for (const pas::ast::SimpleExpr::Op &op : simple_expr.ops_) {
     // if (value.index() != 0) {
     //   throw SemanticProblemException("can only do math with integer type");
     // }
-    llvm::Value *rhs_value = eval(op.term);
+    llvm::Value *rhs_value = TRY(eval(op.term));
     // if (rhs_value.index() != 0) {
     //   throw SemanticProblemException("can only do math with integer type");
     // }
@@ -203,43 +245,5 @@ llvm::Value *Lowerer::eval(pas::ast::SimpleExpr &simple_expr) {
   return value;
 }
 
-llvm::Value *Lowerer::eval(pas::ast::Expr &expr) {
-  llvm::Value *value = eval(expr.start_expr_);
-  if (expr.op_.has_value()) {
-    pas::ast::Expr::Op &op = expr.op_.value();
-    switch (op.rel) {
-    case pas::ast::RelOp::Equal: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpEQ(value, rhs_value);
-    }
-    case pas::ast::RelOp::GreaterEqual: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpSGE(value, rhs_value);
-    }
-    case pas::ast::RelOp::Greater: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpSGT(value, rhs_value);
-    }
-    case pas::ast::RelOp::LessEqual: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpSLE(value, rhs_value);
-    }
-    case pas::ast::RelOp::Less: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpSLT(value, rhs_value);
-    }
-    case pas::ast::RelOp::NotEqual: {
-      llvm::Value *rhs_value = eval(op.expr);
-      return current_func_builder_->CreateICmpNE(value, rhs_value);
-    }
-    case pas::ast::RelOp::In: {
-      // Dispose "value" here.
-      throw NotImplementedException("relation \"in\" is not supported");
-    }
-    default:
-      assert(false);
-      __builtin_unreachable();
-    }
-  }
-  return value;
-}
+} // namespace visitor
+} // namespace pas

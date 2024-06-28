@@ -37,4 +37,13 @@ template <typename Type, typename Variant>
 inline constexpr bool is_variant_member_v =
     is_variant_member<Type, Variant>::value;
 
+// Check if a type is an instance of a given template type.
+//   https://indii.org/blog/is-type-instantiation-of-template/
+template <class T, template <class...> class U>
+inline constexpr bool is_instance_of_v = std::false_type{};
+template <template <class...> class U, class... Vs>
+inline constexpr bool is_instance_of_v<U<Vs...>, U> = std::true_type{};
+// То есть в объявлениях параметров шаблонов можно указать,
+//   что принимается шаблон! Жесть, впервые вижу.
+
 } // namespace pas
