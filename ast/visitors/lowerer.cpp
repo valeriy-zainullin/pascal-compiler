@@ -161,13 +161,9 @@ void Lowerer::process_type_def([[maybe_unused]] pas::ast::TypeDef &type_def) {}
 //   current_func_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
 // }
 
-void Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {
-  TypeKind var_type = make_type_from_ast_type(var_decl.type_);
+LowererErrorOr<void> Lowerer::process_var_decl(pas::ast::VarDecl &var_decl) {
+  pas::ComputedType type = TRY(scopes_.compute_ast_type(var_decl.type_));
   for (const std::string &ident : var_decl.ident_list_) {
-    if (pascal_scopes_.back().contains(ident)) {
-      throw pas::SemanticProblemException("identifier is already in use: " +
-                                          ident);
-    }
     pascal_scopes_.back()[ident] =
         Variable(codegen_alloc_value_of_type(var_type), std::move(var_type));
   }

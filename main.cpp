@@ -10,7 +10,6 @@
 #include "driver.hh"
 
 int main(int argc, char **argv) {
-  int result = 0;
   Driver driver;
 
   std::string output_path;

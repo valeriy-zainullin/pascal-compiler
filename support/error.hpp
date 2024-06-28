@@ -40,25 +40,26 @@ public:
   operator bool() { return variant_.get_index() == 1; }
 
   ErrorType release_error() {
-    if (variant_.get_index() != 0) {
-      // Default constructor should be
-      //   a no error value.
-      // There should also be bool-conversion
-      //   operator for the error type, that will
-      //   tell if it's an error or not.
-      return ErrorType();
-    }
+    // if (variant_.get_index() != 0) {
+    //   // Default constructor should be
+    //   //   a no error value.
+    //   // There should also be bool-conversion
+    //   //   operator for the error type, that will
+    //   //   tell if it's an error or not.
+    //   return ErrorType();
+    // }
     return {std::move(std::get<0>(variant_))};
   }
 
-  ValueType expect_value() {
+  ValueType release_value() {
     // std::move doesn't allow copy elision,
     //   but we'll copy contents of error
     //   in the calling code. Let's move
     //   these contents instead, because
     //   Value may surely be expensive
     //   enough to copy, when we can move it.
-    ASSERT(variant.get_index() != 0, "haven't checked if it's an error!");
+    ASSERT(variant_.get_index() != 0,
+           "user must first check if it's an error!");
     return std::move(std::get<1>(variant_));
   }
 
@@ -66,4 +67,33 @@ private:
   std::variant<ErrorType, ValueType> variant_;
 };
 
+// Если второго аргумента нет, то просто второй аргумент -- std::monostate.
+template <typename ErrorType>
+class ErrorOr<ErrorType, void> : public ErrorOr<ErrorType, std::monostate> {
+  using ErrorOr<ErrorType, std::monostate>::ErrorOr;
+};
+
 } // namespace pas
+
+// GCC extension: statement expressions.
+//   Also supported by clang.
+//   https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+// Also used by linux kernel.
+//   https://stackoverflow.com/a/18885626
+//   TODO: find link to file that uses this extesion
+//   in linux kernel source code.
+// The project also uses -pedantic, so let's ignore
+//   the warning for this place specifically. -pedantic
+//   is great to catch some bugs. I remember cases in
+//   my competitive programming background, when it
+//   diagnosed some good bugs.
+//   https://gcc.gnu.org/onlinedocs/gcc/Alternate-Keywords.html
+// TODO: check if compiles with clang.
+#define TRY(expr)                                                              \
+  __extension__({                                                              \
+    auto result = (expr);                                                      \
+    if (!result) {                                                             \
+      return result.release_error();                                           \
+    }                                                                          \
+    return result.release_value();                                             \
+  })

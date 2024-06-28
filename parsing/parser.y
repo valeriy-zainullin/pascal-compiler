@@ -6,6 +6,10 @@
 %define api.value.type variant
 %define parse.assert
 
+// TODO: implement parser restoration.
+//   Supposedly it is done through introducing
+//   an error symbol.
+
 %code requires {
     #include "ast/ast.hpp"
     #include "ast/utils/get_idx.hpp"

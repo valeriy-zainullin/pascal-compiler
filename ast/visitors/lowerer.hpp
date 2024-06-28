@@ -8,6 +8,7 @@
 #include "ast/ast.hpp"
 #include "ast/utils/get_idx.hpp"
 #include "support/computed_type.hpp"
+#include "support/error.hpp"
 #include "support/scopes.hpp"
 
 namespace pas {
@@ -15,6 +16,11 @@ namespace visitor {
 
 // Примеры IR-а.
 //   https://mcyoung.xyz/2023/08/01/llvm-ir/
+
+using LowererError = std::variant<ScopeStackError>; //, TypeError>;
+
+template <typename ValueType>
+using LowererErrorOr = ErrorOr<LowererError, ValueType>;
 
 class Lowerer {
 public:
@@ -26,6 +32,8 @@ public:
   // filepath is absolute path.
   Lowerer(llvm::LLVMContext &context, const std::string &filepath,
           pas::ast::CompilationUnit &cu);
+
+  std::vector<LowererError> release_errors();
 
   std::unique_ptr<llvm::Module> release_module();
 
@@ -88,52 +96,46 @@ private:
 
   // evalution functions for expressions.
 private:
-  llvm::Value *eval(pas::ast::FuncCall &func_call);
-  llvm::Value *eval(pas::ast::Factor &factor);
-  llvm::Value *eval(pas::ast::Term &term);
-  llvm::Value *eval(pas::ast::SimpleExpr &simple_expr);
-  llvm::Value *eval(pas::ast::Expr &expr);
+  LowererErrorOr<llvm::Value *> eval(pas::ast::FuncCall &func_call);
+  LowererErrorOr<llvm::Value *> eval(pas::ast::Factor &factor);
+  LowererErrorOr<llvm::Value *> eval(pas::ast::Term &term);
+  LowererErrorOr<llvm::Value *> eval(pas::ast::SimpleExpr &simple_expr);
+  LowererErrorOr<llvm::Value *> eval(pas::ast::Expr &expr);
 
-  llvm::Value *eval_read_int(pas::ast::FuncCall &func_call);
+  LowererErrorOr<llvm::Value *> eval_read_int(pas::ast::FuncCall &func_call);
 
   // visit functions for the toplevel scope.
 private:
-  void visit(pas::ast::CompilationUnit &cu);
-  void visit(pas::ast::ProgramModule &pm);
-  void visit_toplevel(pas::ast::Block &block);
+  LowererErrorOr<void> visit(pas::ast::CompilationUnit &cu);
+  LowererErrorOr<void> visit(pas::ast::ProgramModule &pm);
+  LowererErrorOr<void> visit_toplevel(pas::ast::Block &block);
 
   // rename to visit_toplevel_*
-  void process_decls(pas::ast::Declarations &decls);
-  void process_type_def(pas::ast::TypeDef &type_def);
-  void process_var_decl(pas::ast::VarDecl &var_decl);
+  LowererErrorOr<void> process_decls(pas::ast::Declarations &decls);
+  LowererErrorOr<void> process_type_def(pas::ast::TypeDef &type_def);
+  LowererErrorOr<void> process_var_decl(pas::ast::VarDecl &var_decl);
 
   // visit functions for statements inside a block
 private:
-  void visit(pas::ast::MemoryStmt &memory_stmt);
-  void visit(pas::ast::RepeatStmt &repeat_stmt);
-  void visit(pas::ast::CaseStmt &case_stmt);
-  void visit(pas::ast::StmtSeq &stmt_seq);
-  void visit(pas::ast::IfStmt &if_stmt);
-  void visit(pas::ast::EmptyStmt &empty_stmt);
-  void visit(pas::ast::ForStmt &for_stmt);
-  void visit(pas::ast::Assignment &assignment);
-  void visit(pas::ast::ProcCall &proc_call);
-  void visit(pas::ast::WhileStmt &while_stmt);
+  LowererErrorOr<void> visit(pas::ast::MemoryStmt &memory_stmt);
+  LowererErrorOr<void> visit(pas::ast::RepeatStmt &repeat_stmt);
+  LowererErrorOr<void> visit(pas::ast::CaseStmt &case_stmt);
+  LowererErrorOr<void> visit(pas::ast::StmtSeq &stmt_seq);
+  LowererErrorOr<void> visit(pas::ast::IfStmt &if_stmt);
+  LowererErrorOr<void> visit(pas::ast::EmptyStmt &empty_stmt);
+  LowererErrorOr<void> visit(pas::ast::ForStmt &for_stmt);
+  LowererErrorOr<void> visit(pas::ast::Assignment &assignment);
+  LowererErrorOr<void> visit(pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit(pas::ast::WhileStmt &while_stmt);
 
-  void visit_write_int(pas::ast::ProcCall &proc_call);
-  void visit_write_str(pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit_write_int(pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit_write_str(pas::ast::ProcCall &proc_call);
 
   // Scope lifetime functions and lookup.
   //   - Variable creation, destruction.
   // Scope lookup (find function, typedef or variable by identifier)
 private:
-  void create_variable(pas::ast::Type type, PascalIdent name);
-
   llvm::Type *get_llvm_type(const pas::ComputedType &lang_type);
-
-  // Decl in the name, because may find not only variables,
-  //   but different kind of things. TODO: make a common name for them.
-  Variable *lookup_decl(const std::string &identifier);
 
   // llvm related fields
 private:

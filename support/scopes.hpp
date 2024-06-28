@@ -19,8 +19,10 @@
 #include <variant>
 
 #include "ast/type.hpp"
+#include "support/assert.hpp"
 #include "support/computed_type.hpp"
 #include "support/error.hpp"
+#include "support/unreachable.hpp"
 
 namespace pas {
 
@@ -59,12 +61,17 @@ struct BasicVariable {
 
 struct ScopeStackError {
   enum class Reason {
-    NoError,
+    // NoError,
     WrongIdentType,
     IdentNotFound,
     Redefinition,
+    NotImplemented,
   } reason;
   std::string description;
+
+  // operator bool() const {
+  //   return reason != Reason::NoError;
+  // }
 };
 template <typename ValueType>
 using ScopeStackErrorOr = pas::ErrorOr<ScopeStackError, ValueType>;
@@ -78,6 +85,12 @@ using ScopeStackErrorOr = pas::ErrorOr<ScopeStackError, ValueType>;
 //   то пусть тоже делают. Либо в одном месте, либо сделать новый класс
 //   ошибки, ее можно будет привести к ошибке модуля. И все.
 //   И переиспользовать алгоритм приведения ошибок можно.
+
+enum class IdentType {
+  NotDefined,
+  Variable,
+  TypeDef,
+};
 
 // TODO: переместить константы до типа, когда они будут реализованы.
 //   Отсортируем по "возрастанию константности".
@@ -125,14 +138,8 @@ public:
   }
 
 public:
-  enum class IdentType {
-    NotDefined,
-    Variable,
-    TypeDef,
-  };
-
   IdentType find_ident_type(std::string name, bool only_current_scope = false) {
-    if (find_variable(name, only_current_scope) != nullptr) {
+    if (find_var(name, only_current_scope) != nullptr) {
       return IdentType::Variable;
     }
     if (find_tdef(name, only_current_scope) != nullptr) {
@@ -186,10 +193,7 @@ public:
 public:
   template <typename... Args>
   ScopeStackErrorOr<void> store_variable(Variable var, Args &&...args) {
-    if (auto &err =
-            check_ident_type(var.name, IdentType::NotDefined).release_error()) {
-      return err;
-    }
+    TRY(check_ident_type(var.name, IdentType::NotDefined));
 
     // Do something specific that is done
     //   for variable initialization.
@@ -202,10 +206,7 @@ public:
   }
 
   ScopeStackErrorOr<void> store_typedef(TypeDef tdef) {
-    if (auto &err =
-            check_ident_type(var.name, IdentType::NotDefined).release_error()) {
-      return err;
-    }
+    TRY(check_ident_type(tdef.name, IdentType::NotDefined));
 
     // Do something specific that is done
     //   upon typedef construction..
@@ -222,8 +223,7 @@ public:
   */
 
 public:
-  Variable *find_variable(std::string name, bool only_current_scope = false,
-                          bool assert_ident_type = false) {
+  Variable *find_var(std::string name, bool only_current_scope = false) {
     for (auto scope_it = scope_vars_.rbegin(); scope_it != scope_vars_.rend();
          ++scope_it) {
       auto var_it = scope_it->find(name);
@@ -235,16 +235,10 @@ public:
         break;
       }
     }
-    check_ident_type(name, IdentType::NotDefined);
-    if (assert_ident_type &&
-        find_typedef(name, only_current_scope) != nullptr) {
-      throw pas::SemanticProblemException(
-          "expected \"" + name + "\" to be a variable, but it's a type!");
-    }
     return nullptr;
   }
 
-  Variable *find_typedef(std::string name, bool only_current_scope = false) {
+  Variable *find_tdef(std::string name, bool only_current_scope = false) {
     for (auto scope_it = scope_tdefs_.rbegin(); scope_it != scope_tdefs_.rend();
          ++scope_it) {
       auto tdef_it = scope_it->find(name);
@@ -256,16 +250,6 @@ public:
         break;
       }
     }
-    // TODO: make function find_ident_type returning enum, what is behind the
-    // identifier.
-    //   and check it instead of this.
-    //   Also make assert_ident_type(), which would do string formatting on it's
-    //   own to reuse in different find_* functions.
-    if (assert_ident_type &&
-        find_variable(name, only_current_scope) != nullptr) {
-      throw pas::SemanticProblemException(
-          "expected \"" + name + "\" to be a tpedef, but it's a variable!");
-    }
     return nullptr;
   }
 
@@ -273,31 +257,47 @@ public:
   ScopeStackErrorOr<pas::ComputedType>
   compute_ast_type(pas::ast::Type ast_type) {
     return std::visit(
-        [this](auto &alternative) {
-          return pas::ComputedType(
-              from_ast_type(scope_stack, *alternative.get()));
-        },
+        [this](auto &alternative) { return from_ast_type(*alternative.get()); },
         ast_type);
   }
 
   ScopeStackErrorOr<pas::ComputedType>
+  compute_ast_type(const pas::ast::SetType &named_type) {
+    return ScopeStackError{ScopeStackError::Reason::NotImplemented,
+                           "Set types aren't supported for now."};
+  }
+
+  ScopeStackErrorOr<pas::ComputedType>
+  compute_ast_type(const pas::ast::ArrayType &array_type) {
+    return ScopeStackError{ScopeStackError::Reason::NotImplemented,
+                           "Array types aren't supported for now."};
+  }
+
+  ScopeStackErrorOr<pas::ComputedType>
+  compute_ast_type(const pas::ast::PointerType &pointer_type) {
+    // TODO: we should support this. Set types and array types are for later.
+    return ScopeStackError{ScopeStackError::Reason::NotImplemented,
+                           "Pointer types aren't supported for now."};
+  }
+
+  ScopeStackErrorOr<pas::ComputedType>
+  compute_ast_type(const pas::ast::RecordType &record_type) {
+    // TODO: we should support this. Set types and array types are for later.
+    return ScopeStackError{ScopeStackError::Reason::NotImplemented,
+                           "Record types aren't supported for now."};
+  }
+
+  ScopeStackErrorOr<pas::ComputedType>
   compute_ast_type(const pas::ast::NamedType &named_type) {
-    // TODO: check type was found! If not found, check there's a variable. If
-    // so, tell expected type, not variable.
-    // TODO: raise exception in find functions of scope stack, if not found, but
-    // there's a different kind of item with such name.
-    //   So on correct programs compiler is fast. On incorrect programs, where
-    //   it will throw exceptions, it's slow. It's alright.
+    TRY(check_ident_type(named_type.type_name_, IdentType::TypeDef));
+
     // TODO: implement restoration in lowerer, so that if there's an exception,
     // we'll print it and then continue the work. And later on we'll raise the
     // main exception, if there was any exceptions, that some errors were
     // generated. And catch it in main.
-    TypeDef* tdef = scope_stack.find_tdef(pointer_type));
-    if (tdef == nullptr) {
-      // If we'd use ErrorOr, we'd just forward the error from the inside and
-      // that's it!
-      throw pas::SemanticProblemException("")
-    }
+    TypeDef *tdef = find_tdef(named_type.type_name_);
+    ASSERT(tdef != nullptr, "Previous line checks value is defined.");
+    return tdef->type;
   }
 
 private:
