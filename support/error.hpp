@@ -16,6 +16,8 @@
 
 #include <variant>
 
+#include "support/assert.hpp"
+
 namespace pas {
 
 template <typename ErrorType, typename ValueType> class ErrorOr {
@@ -34,10 +36,11 @@ public:
 
   ErrorOr(ValueType value) : variant_(std::move(value)) {}
 
+  ErrorOr() : variant_(ValueType()) {}
   ErrorOr(const ErrorOr &other) = default;
   ErrorOr(ErrorOr &&other) = default;
 
-  operator bool() { return variant_.get_index() == 1; }
+  operator bool() { return std::holds_alternative<ValueType>(variant_); }
 
   ErrorType release_error() {
     // if (variant_.get_index() != 0) {
@@ -48,6 +51,9 @@ public:
     //   //   tell if it's an error or not.
     //   return ErrorType();
     // }
+    ASSERT(std::holds_alternative<ErrorType>(variant_),
+           "user must first check if result is an error before extracting an "
+           "error!");
     return {std::move(std::get<0>(variant_))};
   }
 
@@ -58,8 +64,9 @@ public:
     //   these contents instead, because
     //   Value may surely be expensive
     //   enough to copy, when we can move it.
-    ASSERT(variant_.get_index() != 0,
-           "user must first check if it's an error!");
+    ASSERT(std::holds_alternative<ValueType>(variant_),
+           "user must first check if result is an error before extracting an "
+           "value!");
     return std::move(std::get<1>(variant_));
   }
 

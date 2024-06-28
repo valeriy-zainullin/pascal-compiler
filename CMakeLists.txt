@@ -48,9 +48,8 @@ add_executable(
     driver.cpp
     ast/ast.cpp
     ast/visitors/printer.cpp
-    ast/visitors/lowerer.cpp
+    ast/visitors/lowerer/lowerer.cpp
     ast/visitors/lowerer/llvm_type.cpp
-    support/computed_type.cpp
     
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS}

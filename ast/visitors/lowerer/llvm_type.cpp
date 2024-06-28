@@ -1,3 +1,5 @@
+// Conversion of pascal types to llvm types.
+
 #include "ast/visitors/lowerer.hpp"
 
 #include "llvm/IR/IRBuilder.h"
@@ -48,9 +50,8 @@ get_llvm_type([[maybe_unused]] llvm::IRBuilder<> *ir_builder,
   throw pas::NotImplementedException("Array types aren't supported for now.");
 }
 
-static llvm::Type *
-get_llvm_type([[maybe_unused]] llvm::IRBuilder<> *ir_builder,
-              [[maybe_unused]] const pas::ComputedType &type) {
+static llvm::Type *get_llvm_type(llvm::IRBuilder<> *ir_builder,
+                                 const pas::ComputedType &type) {
   // Что сделает std::visit, он внутри проверит, какая альтернатива хранится в
   // std::variant,
   //   для каждой альтернативы вызовет лямбду, которую передали.
@@ -71,8 +72,7 @@ get_llvm_type([[maybe_unused]] llvm::IRBuilder<> *ir_builder,
 namespace pas {
 namespace visitor {
 
-llvm::Type *
-Lowerer::get_llvm_type([[maybe_unused]] const pas::ComputedType &type) {
+llvm::Type *Lowerer::get_llvm_type(const pas::ComputedType &type) {
   // Qualify global namespace with ::, because argument-dependent lookup
   //   won't find it. Namespace is the list of associated namespaces.
   //   Associated namespaces here: llvm::, ir builder is there;

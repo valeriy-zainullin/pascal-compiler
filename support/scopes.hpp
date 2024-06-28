@@ -150,11 +150,11 @@ public:
 
   std::string_view get_ident_type_desc(IdentType ident_type) {
     switch (ident_type) {
-    NotDefined:
+    case IdentType::NotDefined:
       return "not defined identifier";
-    Variable:
+    case IdentType::Variable:
       return "variable";
-    TypeDef:
+    case IdentType::TypeDef:
       return "type definition";
     default:
       UNREACHABLE("all cases should be handled");
@@ -168,17 +168,18 @@ public:
 
     if (real_type != expected_type && real_type != IdentType::NotDefined &&
         expected_type != IdentType::NotDefined) {
-      return ScopeStackError{ScopeStackError::Reason::WrongIdentType,
-                             "expected \"" + name + "\" to be a " +
-                                 get_ident_type_desc(expected_type) +
-                                 ", but it's a " +
-                                 get_ident_type_desc(expected_type) + "!"};
+      return ScopeStackError{
+          ScopeStackError::Reason::WrongIdentType,
+          "expected \"" + name + "\" to be a " +
+              std::string(get_ident_type_desc(expected_type)) +
+              ", but it's a " +
+              std::string(get_ident_type_desc(expected_type)) + "!"};
     } else if (real_type != expected_type &&
                real_type == IdentType::NotDefined) {
-      return ScopeStackError{ScopeStackError::Reason::IdentNotFound,
-                             "identifier " + name +
-                                 "wasn't found (expected to be a " +
-                                 get_ident_type_desc(expected_type) + ")"};
+      return ScopeStackError{
+          ScopeStackError::Reason::IdentNotFound,
+          "identifier " + name + "wasn't found (expected to be a " +
+              std::string(get_ident_type_desc(expected_type)) + ")"};
     } else if (real_type != expected_type &&
                expected_type == IdentType::NotDefined) {
       // Right now the only reason to check for ident type to be not defined is
@@ -188,6 +189,10 @@ public:
       return ScopeStackError{ScopeStackError::Reason::Redefinition,
                              "redefinition of idenfifier \"" + name + "\""};
     }
+
+    // Return defualt constructed ErrorOr, which is some ok value.
+    //   It actually uses std::monostate instead of void.
+    return {};
   }
 
 public:
@@ -202,7 +207,7 @@ public:
     //   type, if that is your ABI.
     var.start_lifetime(std::forward(args)...);
 
-    scope_vars_.back().insert(var.name, std::move(var));
+    scope_vars_.back()[std::string(var.name)] = std::move(var);
   }
 
   ScopeStackErrorOr<void> store_typedef(TypeDef tdef) {
@@ -212,7 +217,10 @@ public:
     //   upon typedef construction..
     // ltt_.create_typedef(variable);
 
-    scope_tdefs_.back().insert(tdef.name, std::move(tdef));
+    ASSERT(!scope_tdefs_.empty(), "Global scope is created upon ScopeStack"
+                                  " construction and should never be deleted.");
+
+    scope_tdefs_.back()[std::string(tdef.name)] = std::move(tdef);
   }
 
   // Implement later.
@@ -228,7 +236,7 @@ public:
          ++scope_it) {
       auto var_it = scope_it->find(name);
       if (var_it != scope_it->end()) {
-        return &*var_it;
+        return &var_it->second;
       }
 
       if (only_current_scope) {
@@ -238,12 +246,12 @@ public:
     return nullptr;
   }
 
-  Variable *find_tdef(std::string name, bool only_current_scope = false) {
+  TypeDef *find_tdef(std::string name, bool only_current_scope = false) {
     for (auto scope_it = scope_tdefs_.rbegin(); scope_it != scope_tdefs_.rend();
          ++scope_it) {
       auto tdef_it = scope_it->find(name);
       if (tdef_it != scope_it->end()) {
-        return &*tdef_it;
+        return &tdef_it->second;
       }
 
       if (only_current_scope) {

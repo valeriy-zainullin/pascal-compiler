@@ -143,8 +143,6 @@ public:
         },
         *this);
   }
-
-  static ComputedType from_ast_type(const pas::ast::Type &ast_type);
 };
 
 } // namespace pas
