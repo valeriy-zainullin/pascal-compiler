@@ -19,7 +19,7 @@ Lowerer::create_type_def([[maybe_unused]] pas::ast::TypeDef &type_def) {}
 
 // llvm::AllocaInst *Lowerer::codegen_alloc_value_of_type(TypeKind type) {
 //   return
-//   current_func_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
+//   ir_builder_->CreateAlloca(get_llvm_type_by_lang_type(type));
 // }
 
 LowererErrorOr<void> Lowerer::create_var_decl(pas::ast::VarDecl &var_decl) {

@@ -28,21 +28,20 @@ Lowerer::Lowerer(llvm::LLVMContext &context, const std::string &filepath,
   // source_filename = filepath
   module_uptr_ = std::make_unique<llvm::Module>(filepath, context_);
 
-  // Заводим пространство имен предопределенных символов.
-  //   Это встроенные типы и встроенные функции.
-  scopes_.push_scope();
-
-  // Add unique original names for basic types.
-  scopes_.store_typedef({"Integer", BasicType::Integer});
-  scopes_.store_typedef({"Char", BasicType::Char});
-  scopes_.store_typedef({"String", BasicType::String});
-
-  // Move builtin types and builtin functions.
-  // declare_builtins();
-
   // Переобъявить встроенные получится. Но это на совести пользователя.
 
+  // TODO: store all lowerer errors in std::vector of errors,
+  //   catch them somewhere we can do restoration.
+  // Although still generated code is not considered valid,
+  //   if there are any errors.
   visit(cu);
+}
+
+LowererErrorOr<void> Lowerer::declare_builtins() {
+  TRY(declare_builtin_types());
+
+  TRY(declare_builtin_intio());
+  TRY(declare_builtin_strio());
 }
 
 std::unique_ptr<llvm::Module> Lowerer::release_module() {

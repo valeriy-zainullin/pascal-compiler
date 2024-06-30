@@ -1,38 +1,58 @@
-LowererErrorOr<void> Lowerer::visit(pas::ast::StmtSeq &stmt_seq) {
-  for (pas::ast::Stmt &stmt : stmt_seq.stmts_) {
+#include "ast/visitors/lowerer.hpp"
+
+namespace pas {
+namespace visitor {
+
+LowererErrorOr<void> Lowerer::visit(const pas::ast::StmtSeq &stmt_seq) {
+  for (const pas::ast::Stmt &stmt : stmt_seq.stmts_) {
     TRY(std::visit(
         [this](auto &stmt_alt) {
           // stmt_alt is unique_ptr, so let's dereference it.
-          TRY(visit(*stmt_alt.get())); // Printer::visit(stmt_alt);
+          return visit(*stmt_alt.get()); // Lowerer::visit(stmt_alt);
         },
         stmt));
   }
+  return {};
 }
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::MemoryStmt &memory_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::MemoryStmt &memory_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::RepeatStmt &repeat_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::RepeatStmt &repeat_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::CaseStmt &case_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::CaseStmt &case_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::IfStmt &if_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::IfStmt &if_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::EmptyStmt &empty_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::EmptyStmt &empty_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::ForStmt &for_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::ForStmt &for_stmt) {
+  return {};
+}
 
 LowererErrorOr<void>
-Lowerer::visit([[maybe_unused]] pas::ast::WhileStmt &while_stmt) {}
+Lowerer::visit([[maybe_unused]] const pas::ast::WhileStmt &while_stmt) {
+  return {};
+}
 
-LowererErrorOr<void> Lowerer::visit(pas::ast::Assignment &assignment) {
+LowererErrorOr<void> Lowerer::visit(const pas::ast::Assignment &assignment) {
   llvm::Value *new_value = TRY(eval(assignment.expr_));
-  pas::ast::Designator &designator = assignment.designator_;
+  // pas::ast::Designator &designator = assignment.designator_;
 
   // if (!ident_to_item_.contains(designator.ident_)) {
   //   throw SemanticProblemException(
@@ -109,20 +129,33 @@ LowererErrorOr<void> Lowerer::visit(pas::ast::Assignment &assignment) {
 
   llvm::Value *base_value = var->memory;
 
-  current_func_builder_->CreateStore(new_value, base_value);
+  ir_builder_->CreateStore(new_value, base_value);
+
+  return {};
 }
 
-LowererErrorOr<void> Lowerer::visit(pas::ast::ProcCall &proc_call) {
+LowererErrorOr<void> Lowerer::visit(const pas::ast::ProcCall &proc_call) {
   const std::string &proc_name = proc_call.proc_ident_;
 
-  // make constexpr vectors of builtins. Built-in procedures (name, visit
-  // function) pairs.
-  if (proc_name == "write_int") {
-    TRY(visit_write_int(proc_call));
-  } else if (proc_name == "write_str") {
-    TRY(visit_write_str(proc_call));
-  } else {
-    throw pas::NotImplementedException(
-        "procedure calls are not supported yet, except write_int");
-  }
+  TRY(check_ident_type(proc_name, IdentType::Function));
+
+  Function *func = scopes_.find_func(proc_name);
+
+  // TODO: evaluate args, check types!!
+  //   Also store argument names, so that it's possible to
+  //   say what argument (by name) is wrong, not just argument
+  //   index, expected type, call argument type.
+
+  // TODO: somehow call eval(const pas::ast::FuncCall) here.
+  //   To reuse the code. Just ignore the llvm::Value. It's
+  //   created for each create call, but not necessarily stored
+  //   as a named register, because it may be not needed.
+
+  // TODO: write actual line number, instead of 000.
+  ir_builder_->CreateCall(func->llvm_function, {}, "L000_" + proc_name);
+
+  return {};
 }
+
+} // namespace visitor
+} // namespace pas

@@ -14,8 +14,11 @@ LowererErrorOr<void> Lowerer::visit(pas::ast::ProgramModule &pm) {
 }
 
 LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
-  // Заводим глобальное пространство имен, туда пойдут все объявления ниже.
+  // Заводим глобальное пространство имен.
   scopes_.push_scope();
+
+  // Определим встроенные типы и встроенные функции.
+  declare_builtins();
 
   // Decl field should always be there, it can just have
   //   no actual decls inside.
@@ -49,28 +52,8 @@ LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
   auto entry = llvm::BasicBlock::Create(context_, "entrypoint", main_func);
   main_func_builder.SetInsertPoint(entry);
 
-  // Declare builtin functions.
-  //   https://stackoverflow.com/a/22310371
-
-  std::vector<llvm::Type *> write_int_args = {main_func_builder.getInt32Ty()};
-  llvm::FunctionType *write_int_type = llvm::FunctionType::get(
-      main_func_builder.getVoidTy(), write_int_args, false);
-  llvm::Function::Create(write_int_type, llvm::Function::ExternalLinkage,
-                         "write_int", module_uptr_.get());
-
-  std::vector<llvm::Type *> write_str_args = {main_func_builder.getPtrTy()};
-  llvm::FunctionType *write_str_type = llvm::FunctionType::get(
-      main_func_builder.getVoidTy(), write_str_args, false);
-  llvm::Function::Create(write_str_type, llvm::Function::ExternalLinkage,
-                         "write_str", module_uptr_.get());
-
-  // llvm::FunctionType выдалется с помощью placement new в памяти внутри
-  //   контекста. Потому освободится вместе с контекстом. А наличие вызова
-  //   деструктора санитайзеры видимо не проверяют, т.к. это
-  //   библиотека, она уже скомпилирована и проверки туда не вставить.
-
   current_func_ = main_func;
-  current_func_builder_ = &main_func_builder;
+  ir_builder_ = &main_func_builder;
 
   for (auto &type_def : block.decls_->type_defs_) {
     TRY(process_type_def(type_def));
@@ -81,10 +64,10 @@ LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
 
   TRY(visit(block.stmt_seq_));
 
-  current_func_builder_->CreateRet(current_func_builder_->getInt32(0));
+  ir_builder_->CreateRet(ir_builder_->getInt32(0));
 
   current_func_ = nullptr;
-  current_func_builder_ = nullptr;
+  ir_builder_ = nullptr;
 
   return {}; // Return some ok value (std::monostate).
 }

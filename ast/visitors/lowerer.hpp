@@ -39,7 +39,7 @@ public:
 
   // Useful typedefs.
 private:
-  struct Value {
+  struct TmpValue {
     // llvm::Value* is actually an
     //   evaluation tree (made of instructions and value declarations) for the
     //   value.
@@ -57,7 +57,7 @@ private:
     pas::ComputedType type;
   };
 
-  struct Variable : public pas::BasicVariable {
+  struct Variable : public pas::ScopeStackInterface::BasicVariable {
     llvm::AllocaInst *memory;
 
     void start_lifetime(llvm::Module *module, llvm::IRBuilder<> *ir_builder) {
@@ -90,9 +90,42 @@ private:
 
   // Пока не нужно хранить дополнительную информацию рядом с
   //   объявлением типа.
-  using TypeDef = pas::BasicTypeDef;
+  using Type = pas::ScopeStackInterface::BasicType;
+
+  struct Function : public pas::ScopeStackInterface::BasicFunction {
+    llvm::Function *llvm_function;
+  };
 
   using PascalIdent = std::string;
+
+  // builtins:
+private:
+  LowererErrorOr<void> declare_builtins();
+  LowererErrorOr<void> declare_builtin_types();
+  LowererErrorOr<void> declare_builtin_intio();
+  LowererErrorOr<void> declare_builtin_strio();
+
+  // declaration helpers
+private:
+  // Creates alloca inst and stores the variable in scope stack.
+  // Returns scope stack error, if a redefinition in the same scope, for
+  // example.
+  LowererErrorOr<void> declare_var(Variable var);
+
+  // Just store the type in scope stack.
+  // Type declaration is always a definition. There's no
+  //   declaration without initialization.
+  //   Whereas for variables declaration is not an assignment.
+  //   Although they are constructed with some meaningful value.
+  //   Regarding functions, there are forward declarations (will be in future).
+  // Returns scope stack error, if a redefinition in the same scope, for
+  // example.
+  LowererErrorOr<void> declare_type(Type type);
+
+  // For functions we have not only to store them in scope stack,
+  //   but tell llvm such a function exist, also convert pascal
+  //   types to llvm ones.
+  LowererErrorOr<void> declare_func(Function func);
 
   // evalution functions for expressions.
 private:
@@ -127,19 +160,19 @@ private:
 
   // visit functions for statements inside a block
 private:
-  LowererErrorOr<void> visit(pas::ast::MemoryStmt &memory_stmt);
-  LowererErrorOr<void> visit(pas::ast::RepeatStmt &repeat_stmt);
-  LowererErrorOr<void> visit(pas::ast::CaseStmt &case_stmt);
-  LowererErrorOr<void> visit(pas::ast::StmtSeq &stmt_seq);
-  LowererErrorOr<void> visit(pas::ast::IfStmt &if_stmt);
-  LowererErrorOr<void> visit(pas::ast::EmptyStmt &empty_stmt);
-  LowererErrorOr<void> visit(pas::ast::ForStmt &for_stmt);
-  LowererErrorOr<void> visit(pas::ast::Assignment &assignment);
-  LowererErrorOr<void> visit(pas::ast::ProcCall &proc_call);
-  LowererErrorOr<void> visit(pas::ast::WhileStmt &while_stmt);
+  LowererErrorOr<void> visit(const pas::ast::MemoryStmt &memory_stmt);
+  LowererErrorOr<void> visit(const pas::ast::RepeatStmt &repeat_stmt);
+  LowererErrorOr<void> visit(const pas::ast::CaseStmt &case_stmt);
+  LowererErrorOr<void> visit(const pas::ast::StmtSeq &stmt_seq);
+  LowererErrorOr<void> visit(const pas::ast::IfStmt &if_stmt);
+  LowererErrorOr<void> visit(const pas::ast::EmptyStmt &empty_stmt);
+  LowererErrorOr<void> visit(const pas::ast::ForStmt &for_stmt);
+  LowererErrorOr<void> visit(const pas::ast::Assignment &assignment);
+  LowererErrorOr<void> visit(const pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit(const pas::ast::WhileStmt &while_stmt);
 
-  LowererErrorOr<void> visit_write_int(pas::ast::ProcCall &proc_call);
-  LowererErrorOr<void> visit_write_str(pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit_write_int(const pas::ast::ProcCall &proc_call);
+  LowererErrorOr<void> visit_write_str(const pas::ast::ProcCall &proc_call);
 
   // Scope lifetime functions and lookup.
   //   - Variable creation, destruction.
@@ -157,14 +190,14 @@ private:
   std::unique_ptr<llvm::Module> module_uptr_;
 
   llvm::Function *current_func_ = nullptr;
-  llvm::IRBuilder<> *current_func_builder_ = nullptr;
+  llvm::IRBuilder<> *ir_builder_ = nullptr;
 
   // static EraseFromParent<llvm::Function> FunctionDeleter;
   // std::unique_ptr<llvm::Function, decltype(FunctionDeleter)> main_func_uptr_;
 
   // pascal related fields.
 private:
-  pas::ScopeStack<Variable, TypeDef> scopes_;
+  pas::ScopeStack<Variable, Type, Function> scopes_;
 
   // Чтобы посмотреть в действии, как работает трансляция, посмотрите видео
   // Андреаса Клинга.

@@ -12,38 +12,26 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Expr &expr) {
   llvm::Value *value = TRY(eval(expr.start_expr_));
   if (expr.op_.has_value()) {
     const pas::ast::Expr::Op &op = expr.op_.value();
+    llvm::Value *rhs_value = TRY(eval(op.expr));
     switch (op.rel) {
-    case pas::ast::RelOp::Equal: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpEQ(value, rhs_value);
-    }
-    case pas::ast::RelOp::GreaterEqual: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpSGE(value, rhs_value);
-    }
-    case pas::ast::RelOp::Greater: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpSGT(value, rhs_value);
-    }
-    case pas::ast::RelOp::LessEqual: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpSLE(value, rhs_value);
-    }
-    case pas::ast::RelOp::Less: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpSLT(value, rhs_value);
-    }
-    case pas::ast::RelOp::NotEqual: {
-      llvm::Value *rhs_value = TRY(eval(op.expr));
-      return current_func_builder_->CreateICmpNE(value, rhs_value);
-    }
+    case pas::ast::RelOp::Equal:
+      return ir_builder_->CreateICmpEQ(value, rhs_value);
+    case pas::ast::RelOp::GreaterEqual:
+      return ir_builder_->CreateICmpSGE(value, rhs_value);
+    case pas::ast::RelOp::Greater:
+      return ir_builder_->CreateICmpSGT(value, rhs_value);
+    case pas::ast::RelOp::LessEqual:
+      return ir_builder_->CreateICmpSLE(value, rhs_value);
+    case pas::ast::RelOp::Less:
+      return ir_builder_->CreateICmpSLT(value, rhs_value);
+    case pas::ast::RelOp::NotEqual:
+      return ir_builder_->CreateICmpNE(value, rhs_value);
     case pas::ast::RelOp::In: {
       // Dispose "value" here.
       throw NotImplementedException("relation \"in\" is not supported");
     }
     default:
-      assert(false);
-      __builtin_unreachable();
+      UNREACHABLE("all cases should be handled.");
     }
   }
   return value;
@@ -59,39 +47,37 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Term &term) {
     // if (rhs_value.index() != 0) {
     //   throw SemanticProblemException("can only do math with integer type");
     // }
-    switch (op.op) {
-    case pas::ast::MultOp::And: {
-      value = current_func_builder_->CreateLogicalAnd(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::IntDiv: {
-      value = current_func_builder_->CreateSDiv(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::Modulo: {
-      value = current_func_builder_->CreateSRem(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::Multiply: {
+    // Avoid these breaks.
+    //   https://stackoverflow.com/a/62603143
+    //   I think this inlines. TODO: check that, find some evidence in the
+    //   internet.
+    value = [&]() {
+      switch (op.op) {
+      case pas::ast::MultOp::And:
+        return ir_builder_->CreateLogicalAnd(value, rhs_value);
+      case pas::ast::MultOp::IntDiv:
+        return ir_builder_->CreateSDiv(value, rhs_value);
+      case pas::ast::MultOp::Modulo:
+        return ir_builder_->CreateSRem(value, rhs_value);
+
       // nsw, nuw and etc.
       //   https://stackoverflow.com/a/61210926
-      value = current_func_builder_->CreateMul(value, rhs_value);
-      break;
-    }
-    case pas::ast::MultOp::RealDiv: {
-      throw NotImplementedException("real numbers are not supported");
-    }
-    default:
-      assert(false);
-      __builtin_unreachable();
-    }
+      case pas::ast::MultOp::Multiply:
+        return ir_builder_->CreateMul(value, rhs_value);
+      case pas::ast::MultOp::RealDiv:
+        throw NotImplementedException("real numbers are not supported");
+
+      default:
+        UNREACHABLE("all cases should be handled.");
+      }
+    }();
   }
   return value;
 }
 
 LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Factor &factor) {
   return std::visit(
-      [this](const auto &alternative) -> auto {
+      [this](const auto &alternative) {
         if constexpr (is_instance_of_v<
                           std::remove_cvref_t<decltype(alternative)>,
                           std::unique_ptr>) {
@@ -110,12 +96,12 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Factor &factor) {
 LowererErrorOr<llvm::Value *> Lowerer::eval(bool value) {
   // No dedicated bool type for now for simplicity
   //   (I don't have much time, too many things to do).
-  return current_func_builder_->getInt1(value);
+  return ir_builder_->getInt1(value);
 }
 
 // TODO: make this int32_t in ast, here and in other visitors.
 LowererErrorOr<llvm::Value *> Lowerer::eval(int value) {
-  return current_func_builder_->getInt32(value);
+  return ir_builder_->getInt32(value);
 }
 
 // TODO: annotate it is string as a string literal. So return not
@@ -134,7 +120,7 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(std::string value) {
   // TODO: change these to be std::string pointers, that are
   //   manually allocated and deallocated by calling create_str,
   //   dispose_str.
-  return current_func_builder_->CreateGlobalStringPtr(value);
+  return ir_builder_->CreateGlobalStringPtr(value);
 }
 
 LowererErrorOr<llvm::Value *>
@@ -150,7 +136,7 @@ LowererErrorOr<llvm::Value *> Lowerer::eval(const pas::ast::Negation &value) {
   // }
 
   // TODO: check types!!!
-  return current_func_builder_->CreateNot(inner_value);
+  return ir_builder_->CreateNot(inner_value);
 }
 
 LowererErrorOr<llvm::Value *>
@@ -208,8 +194,8 @@ Lowerer::eval(const pas::ast::Designator &designator) {
     //   }
   }
   // TODO: don't forget to change type, when traversing DesignatorItems above.
-  return current_func_builder_->CreateLoad(get_llvm_type(var->type), base_value,
-                                           designator.ident_);
+  return ir_builder_->CreateLoad(get_llvm_type(var->type), base_value,
+                                 designator.ident_);
 }
 
 LowererErrorOr<llvm::Value *>
@@ -224,25 +210,26 @@ Lowerer::eval(const pas::ast::SimpleExpr &simple_expr) {
     // if (rhs_value.index() != 0) {
     //   throw SemanticProblemException("can only do math with integer type");
     // }
-    switch (op.op) {
-    case pas::ast::AddOp::Plus: {
-      value = current_func_builder_->CreateAdd(value, rhs_value);
-      break;
-    }
-    case pas::ast::AddOp::Minus: {
-      value = current_func_builder_->CreateSub(value, rhs_value);
-      break;
-    }
-    case pas::ast::AddOp::Or: {
-      value = current_func_builder_->CreateLogicalOr(value, rhs_value);
-      break;
-    }
-    default:
-      assert(false);
-      __builtin_unreachable();
-    }
+    value = [&]() {
+      switch (op.op) {
+      case pas::ast::AddOp::Plus:
+        return ir_builder_->CreateAdd(value, rhs_value);
+      case pas::ast::AddOp::Minus:
+        return ir_builder_->CreateSub(value, rhs_value);
+      case pas::ast::AddOp::Or:
+        return ir_builder_->CreateLogicalOr(value, rhs_value);
+      default:
+        UNREACHABLE("All cases should be handled!");
+      }
+    }();
   }
   return value;
+}
+
+LowererErrorOr<llvm::Value *>
+Lowerer::eval([[maybe_unused]] const pas::ast::FuncCall &func_call) {
+  throw pas::NotImplementedException(
+      "function calls aren't supported for now.");
 }
 
 } // namespace visitor

@@ -82,7 +82,7 @@ llvm::Type *Lowerer::get_llvm_type(const pas::ComputedType &type) {
   //   succeed. So the compiler doesn't know it has to move some namespaces
   //   up from pas::visitor::Lowerer. Also, that is a language requirement
   //   probably, because ADL is a mechanism of finding the right function.
-  return ::get_llvm_type(current_func_builder_, type);
+  return ::get_llvm_type(ir_builder_, type);
 }
 
 } // namespace visitor
