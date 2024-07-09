@@ -88,4 +88,5 @@
     
     "editor.indentSize": 2,
     "editor.tabSize": 2,
+    "editor.detectIndentation": false,
 }

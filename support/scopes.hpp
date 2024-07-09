@@ -7,6 +7,10 @@
 // При трансляции в IR для переменных нужно хранить llvm::AllocaInst*,
 //   которая обозначает память, которая выделена под нее.
 //   А при интерпретации может быть нужно хранить само значение переменной.
+//   (Для глобальных переменных нужно хранить llvm::GlobalVariable*,
+//   причем нужно хранить только одно из двух, переменная либо внутри
+//   функции, либо глобальная, потому храним llvm::Value* в качестве
+//   памяти).
 // Для типов можно каждый раз заново по языковому типу получать
 //   llvm тип, а можно тоже хранить как доп. информацию. Тогда ее
 //   создавать будет вызывающая сторона, с помощью своей логики.
@@ -104,6 +108,29 @@ enum class IdentType {
   Function,
 };
 
+// Needed for heterogenious lookup.
+//   E.g. to find an item through a std::string_view, even though
+//   the key is std::string. The idea is that we really don't need
+//   to create a temporary std::string in order to perform hashing
+//   (if we use std::unordered_map) or do string comparisons (if
+//   we use std::map).
+//   It's the same string anyway as the original std::string_view.
+//   So let's find a way to use the original string.
+//   C++20 introduced a way to do that.
+//   https://stackoverflow.com/a/53530846
+struct string_hash {
+  using hash_type = std::hash<std::string_view>;
+  using is_transparent = void;
+
+  std::size_t operator()(const char *str) const { return hash_type{}(str); }
+  std::size_t operator()(std::string_view str) const {
+    return hash_type{}(str);
+  }
+  std::size_t operator()(std::string const &str) const {
+    return hash_type{}(str);
+  }
+};
+
 // TODO: переместить константы до типа, когда они будут реализованы.
 //   Отсортируем по "возрастанию константности".
 //   Переменные живут во время исполнения программы, могут меняться.
@@ -131,11 +158,13 @@ public:
   void push_scope() {
     scope_vars_.emplace_back();
     scope_types_.emplace_back();
+    scope_consts_.emplace_back();
   }
 
   template <typename... Args> void pop_scope(Args... args) {
     assert(!scope_vars_.empty());
     assert(!scope_types_.empty());
+    assert(!scope_consts_.empty());
 
     for (auto &var_entry : scope_vars_) {
       Variable &var = var_entry.second;
@@ -150,10 +179,12 @@ public:
 
     scope_vars_.pop_back();
     scope_types_.pop_back();
+    scope_consts_.pop_back();
   }
 
 public:
-  IdentType find_ident_type(std::string name, bool only_current_scope = false) {
+  IdentType find_ident_type(const std::string_view name,
+                            bool only_current_scope = false) {
     if (find_var(name, only_current_scope) != nullptr) {
       return IdentType::Variable;
     }
@@ -181,7 +212,7 @@ public:
     }
   }
 
-  ScopeStackErrorOr<void> check_ident_type(std::string name,
+  ScopeStackErrorOr<void> check_ident_type(const std::string_view name,
                                            IdentType expected_type,
                                            bool only_current_scope = false) {
     IdentType real_type = find_ident_type(name, only_current_scope);
@@ -190,14 +221,14 @@ public:
         expected_type != IdentType::NotDefined) {
       return ScopeStackError{
           ScopeStackError::Reason::WrongIdentType,
-          "expected \"" + name + "\" to be " +
+          "expected \"" + std::string(name) + "\" to be " +
               std::string(get_ident_type_desc(expected_type)) + ", but it's " +
               std::string(get_ident_type_desc(expected_type)) + "!"};
     } else if (real_type != expected_type &&
                real_type == IdentType::NotDefined) {
       return ScopeStackError{
           ScopeStackError::Reason::IdentNotFound,
-          "identifier " + name + "wasn't found (expected to be " +
+          "identifier " + std::string(name) + "wasn't found (expected to be " +
               std::string(get_ident_type_desc(expected_type)) + ")"};
     } else if (real_type != expected_type &&
                expected_type == IdentType::NotDefined) {
@@ -206,7 +237,8 @@ public:
       //   If that changes, other cases arrive, we'll have to think..
       // Right now assume it's redefinition.
       return ScopeStackError{ScopeStackError::Reason::Redefinition,
-                             "redefinition of idenfifier \"" + name + "\""};
+                             "redefinition of idenfifier \"" +
+                                 std::string(name) + "\""};
     }
 
     // Return defualt constructed ErrorOr, which is some ok value.
@@ -280,9 +312,16 @@ public:
   */
 
 public:
-  Variable *find_var(const std::string &name, bool only_current_scope = false) {
+  Variable *find_var(const std::string_view name,
+                     bool only_current_scope = false) {
     for (auto scope_it = scope_vars_.rbegin(); scope_it != scope_vars_.rend();
          ++scope_it) {
+      // Heterogenious lookup, c++20.
+      //   https://stackoverflow.com/a/53530846
+      //   We use std::string_view, when key is std::string.
+      //   Temporary object is in fact not needed, because
+      //   types are "compatible", both hashable and hashes
+      //   are compatible hashes of a string.
       auto var_it = scope_it->find(name);
       if (var_it != scope_it->end()) {
         return &var_it->second;
@@ -295,7 +334,8 @@ public:
     return nullptr;
   }
 
-  Type *find_tdef(const std::string &name, bool only_current_scope = false) {
+  Type *find_tdef(const std::string_view name,
+                  bool only_current_scope = false) {
     for (auto scope_it = scope_types_.rbegin(); scope_it != scope_types_.rend();
          ++scope_it) {
       auto tdef_it = scope_it->find(name);
@@ -310,7 +350,7 @@ public:
     return nullptr;
   }
 
-  Function *find_func(const std::string &name) {
+  Function *find_func(const std::string_view name) {
     auto func_it = funcs_.find(name);
     if (func_it != funcs_.end()) {
       return &func_it->second;
@@ -327,26 +367,26 @@ public:
   }
 
   ScopeStackErrorOr<pas::ComputedType>
-  compute_ast_type(const pas::ast::SetType &set_type) {
+  compute_ast_type([[maybe_unused]] const pas::ast::SetType &set_type) {
     return ScopeStackError{ScopeStackError::Reason::NotImplemented,
                            "Set types aren't supported for now."};
   }
 
   ScopeStackErrorOr<pas::ComputedType>
-  compute_ast_type(const pas::ast::ArrayType &array_type) {
+  compute_ast_type([[maybe_unused]] const pas::ast::ArrayType &array_type) {
     return ScopeStackError{ScopeStackError::Reason::NotImplemented,
                            "Array types aren't supported for now."};
   }
 
   ScopeStackErrorOr<pas::ComputedType>
-  compute_ast_type(const pas::ast::PointerType &pointer_type) {
+  compute_ast_type([[maybe_unused]] const pas::ast::PointerType &pointer_type) {
     // TODO: we should support this. Set types and array types are for later.
     return ScopeStackError{ScopeStackError::Reason::NotImplemented,
                            "Pointer types aren't supported for now."};
   }
 
   ScopeStackErrorOr<pas::ComputedType>
-  compute_ast_type(const pas::ast::RecordType &record_type) {
+  compute_ast_type([[maybe_unused]] const pas::ast::RecordType &record_type) {
     // TODO: we should support this. Set types and array types are for later.
     return ScopeStackError{ScopeStackError::Reason::NotImplemented,
                            "Record types aren't supported for now."};
@@ -368,11 +408,24 @@ public:
     return tdef->type;
   }
 
+public:
+  bool is_topmost_scope() {
+    ASSERT(scope_vars_.size() == scope_types_.size() &&
+               scope_types_.size() == scope_consts_.size(),
+
+           "All scope containers lengths are modified in the same "
+           "way by push_back and pop_back.");
+    return scope_vars_.size() == 1;
+  }
+
 private:
   // Из идентификатора в объявляемый объект.
-  using VarsOfScope = std::unordered_map<std::string, Variable>;
-  using TypesOfScope = std::unordered_map<std::string, Type>;
-  using ConstsOfScope = std::unordered_map<std::string, Constant>;
+  using VarsOfScope =
+      std::unordered_map<std::string, Variable, string_hash, std::equal_to<>>;
+  using TypesOfScope =
+      std::unordered_map<std::string, Type, string_hash, std::equal_to<>>;
+  using ConstsOfScope =
+      std::unordered_map<std::string, Constant, string_hash, std::equal_to<>>;
 
   // Scopes -- области видимости.
   //   Разложены на три компоненты: переменные, синонимы типов и константы.
@@ -381,7 +434,8 @@ private:
   std::vector<ConstsOfScope> scope_consts_;
 
   // Определения функций разрешены только в глобальном пространстве имен.
-  std::unordered_map<std::string, Function> funcs_;
+  std::unordered_map<std::string, Function, string_hash, std::equal_to<>>
+      funcs_;
 };
 
 } // namespace pas

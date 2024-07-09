@@ -12,10 +12,12 @@ LowererErrorOr<void> Lowerer::declare_builtin_intio() {
   //   Also make sanity check function sanity_check(), it checks that
   //   function external or it's a forward declaration, but not both at the same
   //   time. Also, libraries may be mentioned for these functions.
-  TRY(declare_func(
-      Function{"write_int", {}, {BasicType::Integer}, false, nullptr}));
-  TRY(declare_func(
-      Function{"read_int", BasicType::Integer, {}, false, nullptr}));
+  TRY(declare_func("write_int", {}, {BasicType::Integer}));
+  // TODO: add another write_int and check what llvm::CreateFunction does,
+  //   if a function with such name already exists.
+  TRY(declare_func("read_int", BasicType::Integer, {}));
+
+  return {};
 }
 
 } // namespace visitor

@@ -30,6 +30,9 @@ Lowerer::Lowerer(llvm::LLVMContext &context, const std::string &filepath,
 
   // Переобъявить встроенные получится. Но это на совести пользователя.
 
+  llvm::IRBuilder<> ir_builder(context_);
+  ir_builder_ = &ir_builder;
+
   // TODO: store all lowerer errors in std::vector of errors,
   //   catch them somewhere we can do restoration.
   // Although still generated code is not considered valid,
@@ -42,6 +45,8 @@ LowererErrorOr<void> Lowerer::declare_builtins() {
 
   TRY(declare_builtin_intio());
   TRY(declare_builtin_strio());
+
+  return {};
 }
 
 std::unique_ptr<llvm::Module> Lowerer::release_module() {

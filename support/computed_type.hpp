@@ -11,7 +11,9 @@
 #include "llvm/IR/IRBuilder.h"
 
 #include "exceptions.hpp"
+#include "support/assert.hpp"
 #include "support/template_utils.hpp"
+#include "support/unreachable.hpp"
 
 #include "ast/ast.hpp"
 
@@ -22,6 +24,7 @@ enum class BasicType {
   Real,
   Char,
   String,
+  StringLiteral,
   // ...
 };
 
@@ -52,6 +55,8 @@ struct SetType {
     //   other stuff.
     return false;
   }
+
+  std::string to_str() const { return "?set?"; }
 };
 
 struct ArrayType {
@@ -67,6 +72,8 @@ struct ArrayType {
     return false;
   }
 };
+
+struct ComputedType;
 
 struct PointerType {
   size_t num_ptrs = 0; // Сколько перенаправлений.
@@ -93,6 +100,9 @@ struct PointerType {
         },
         refd_type);
   }
+
+  // Возвращает тип объекта, получающийся при разыменовании указателя.
+  ComputedType get_accessed_type() const;
 };
 
 // Чего не сделаешь, чтобы forward declaration работал..
@@ -144,5 +154,12 @@ public:
         *this);
   }
 };
+
+std::string type_to_str(const BasicType &basic_type);
+std::string type_to_str(const RecordType &record_type);
+std::string type_to_str(const SetType &set_type);
+std::string type_to_str(const ArrayType &array_type);
+std::string type_to_str(const PointerType &pointer_type);
+std::string type_to_str(const ComputedType &type);
 
 } // namespace pas

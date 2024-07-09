@@ -5,49 +5,73 @@
 namespace pas {
 namespace visitor {
 
-LowererErrorOr<void> Lowerer::declare_var(Variable var) {
-  TRY(scopes_.check_ident_type(var.name, IdentType::NotDefined, true));
+LowererErrorOr<void> Lowerer::declare_var(std::string name,
+                                          pas::ComputedType type) {
+  TRY(scopes_.check_ident_type(name, IdentType::NotDefined, true));
 
-  // Переменная не объявлена. Тогда вставка должна успешно
-  //   отработать. Выделим память в IR, затем вставим.
-  var.memory = ir_builder_->CreateAlloca(get_llvm_type(var.type));
+  Variable var = {std::move(name), std::move(type), nullptr};
 
-  [[maybe_unused]] auto result =
-      scopes_.store_variable(std::move(var), module_uptr_.get(), ir_builder_);
-  ASSERT(result, "Проверили выше, что такого символа еще не "
-                 "было; этого должно быть достаточно.");
+  // Если сейчас активно глобальное пространство имен,
+  //   то перед нами глобальная переменная. Выделяем на
+  //   уровне всего модуля (единицы трансляции, исходника).
+  if (scopes_.is_topmost_scope()) {
+    llvm::Type *llvm_type = get_llvm_type(var.type);
+    // Создадим глобальную переменную в модуле.
+    //   https://stackoverflow.com/a/7787504
+    // llvm::Constant::getNullValue - Constructor to create
+    //   a '0' constant of arbitrary type.
+    //   https://github.com/llvm/llvm-project/blob/3a744283f4c56b57adb2c381c0aeaf7faf5120ec/llvm/include/llvm/IR/Constant.h#L189
+    //   https://github.com/llvm/llvm-project/blob/3a744283f4c56b57adb2c381c0aeaf7faf5120ec/llvm/lib/IR/Constants.cpp#L370
+    auto llvm_var = new llvm::GlobalVariable(
+        *module_uptr_.get(), llvm_type,
+        /*isConstant=*/false,
+        /*Linkage=*/llvm::GlobalValue::CommonLinkage,
+        /*Initializer=*/llvm::Constant::getNullValue(llvm_type));
+    module_uptr_->insertGlobalVariable(llvm_var);
+    var.memory = llvm_var;
+  } else {
+    // Выделим память в текущей функции на стеке, затем вставим.
+    var.memory = ir_builder_->CreateAlloca(get_llvm_type(var.type));
+  }
+
+  // Может не вставиться, а память мы уже выделили. Никакой проблемы нет,
+  //   будет ошибка компиляции. А то, что в IR лишнее выделение памяти
+  //   (alloca) или в списке глобальных переменных лишняя
+  //   -- не страшно.
+  TRY(scopes_.store_variable(std::move(var), module_uptr_.get(), ir_builder_));
 
   return {};
 }
 
-LowererErrorOr<void> Lowerer::declare_type(Type type) {
-  TRY(scopes_.store_type(std::move(type)));
+LowererErrorOr<void> Lowerer::declare_type(std::string name,
+                                           pas::ComputedType type) {
+  TRY(scopes_.store_type(
+      Type{.name = std::move(name), .type = std::move(type)}));
 
   return {};
 }
 
-LowererErrorOr<void> Lowerer::declare_func(Function func) {
-  std::string func_name = func.name;
+LowererErrorOr<void>
+Lowerer::declare_func(std::string name,
+                      std::optional<pas::ComputedType> ret_type,
+                      std::vector<pas::ComputedType> args) {
+  // Can't do designated initialization of inherited members.
+  //   https://stackoverflow.com/a/72536949
+  Function func = {std::move(name), std::move(ret_type), std::move(args)};
 
   // Функции можно объявлять функции только в глобальной области
   //   видимости, это проверяется в visit для объявления функций.
-  // Потому эта проверка по факту проверяет, что в глобальном
-  //   пространстве имен нет такого же символа.
-  TRY(scopes_.check_ident_type(func.name, IdentType::NotDefined));
 
-  // Тогда вставка должна успешно отработать. Объявим в IR,
-  //   затем вставим.
-
-  llvm::Type *return_value = nullptr;
+  llvm::Type *llvm_ret_type = nullptr;
   if (func.ret_type) {
-    return_value = get_llvm_type(func.ret_type.value());
+    llvm_ret_type = get_llvm_type(func.ret_type.value());
   } else {
-    return_value = ir_builder_->getVoidTy();
+    llvm_ret_type = ir_builder_->getVoidTy();
   }
 
-  std::vector<llvm::Type *> args;
+  std::vector<llvm::Type *> llvm_args;
   for (const ComputedType &pascal_type : func.arg_types) {
-    args.push_back(get_llvm_type(pascal_type));
+    llvm_args.push_back(get_llvm_type(pascal_type));
   }
 
   // How to declare a function in LLVM and define it later
@@ -56,7 +80,7 @@ LowererErrorOr<void> Lowerer::declare_func(Function func) {
   // TODO: extract external flag from Function, supply here.
   // TODO: implement external flag in the first place.
   llvm::FunctionType *func_type =
-      llvm::FunctionType::get(return_value, args, false);
+      llvm::FunctionType::get(llvm_ret_type, llvm_args, false);
   func.llvm_function =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
                              func.name, module_uptr_.get());
@@ -67,9 +91,15 @@ LowererErrorOr<void> Lowerer::declare_func(Function func) {
   //   библиотека, она уже скомпилирована и проверки туда не вставить.
 
   // Кладем в стек областей видимости.
-  [[maybe_unused]] auto result = scopes_.store_function(std::move(func));
-  ASSERT(result, "Проверили выше, что такого символа еще не "
-                 "было; этого должно быть достаточно.")
+  //   Может не вставиться, если не в глобальной
+  //   области видимости сейчас или такая функция
+  //   уже объявлена. Будет ошибка компиляции. А то,
+  //   что в IR лишняя функция (С ТАКИМ ЖЕ ИМЕНЕМ?)
+  //   не страшно.
+  // TODO: проверить, что будет делать llvm::Function::Create,
+  //   если такое имя функции уже использовалось ранее.
+  //   Отредактировать коммент выше, убрать капс.
+  TRY(scopes_.store_function(std::move(func)));
 
   return {};
 }

@@ -46,4 +46,8 @@ inline constexpr bool is_instance_of_v<U<Vs...>, U> = std::true_type{};
 // То есть в объявлениях параметров шаблонов можно указать,
 //   что принимается шаблон! Жесть, впервые вижу.
 
+template <typename T, typename U>
+inline constexpr bool is_same_nocvref_v =
+    std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
+
 } // namespace pas

@@ -20,7 +20,18 @@
 
 namespace pas {
 
-template <typename ErrorType, typename ValueType> class ErrorOr {
+// How to ignore intentionally.
+//   https://stackoverflow.com/questions/53581744/how-can-i-intentionally-discard-a-nodiscard-return-value
+//   I'd not cast to void, but rather assign to std::ignore. Looks a bit better
+//   in my opinion.
+template <typename ErrorType, typename ValueType>
+class
+    // TODO: uncomment and add below to the specialization for <*, void>.
+    // [[nodiscard(
+    //   "if error is not handled here, please return it to the parent call "
+    //   "(maybe with TRY macro) or explicitly ignore the value."
+    // )]]
+    ErrorOr {
 public:
   static_assert(!std::is_same_v<ErrorType, ValueType>);
   static_assert(!std::is_reference_v<ErrorType>);
@@ -132,11 +143,21 @@ class ErrorOr<ErrorType, void> : public ErrorOr<ErrorType, std::monostate> {
 //   diagnosed some good bugs.
 //   https://gcc.gnu.org/onlinedocs/gcc/Alternate-Keywords.html
 // TODO: check if compiles with clang.
+// Как работает TRY? Как и в serenityos, сначала вычисляем выражение
+//   возвращающее ErrorOr, затем смотрим. Если ошибка (TRY_result
+//   контекстуально-приведенный к bool равен false), прокидываем.
+//   Иначе выражение, содержащее TRY, вычисляется в значение внутри
+//   ErrorOr.
+// TODO: найти статью про контекстуальное приведение к bool на хабре.
+//   Приведение к булу -- особый случай, это преобразование типов
+//   "контекстуальное" для условий внутри if-ов, for-ов и т.п.
+// Название переменной не по кодстайлу специально, чтобы не получать
+//   перекрытий (shadowing), иначе компилятор будет выдавать ошибку.
 #define TRY(expr)                                                              \
   __extension__({                                                              \
-    auto result = (expr);                                                      \
-    if (!result) {                                                             \
-      return result.release_error();                                           \
+    auto TRY_result = (expr);                                                  \
+    if (!TRY_result) {                                                         \
+      return TRY_result.release_error();                                       \
     }                                                                          \
-    result.release_value();                                                    \
+    TRY_result.release_value();                                                \
   })

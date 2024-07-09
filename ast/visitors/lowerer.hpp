@@ -17,7 +17,53 @@ namespace visitor {
 // Примеры IR-а.
 //   https://mcyoung.xyz/2023/08/01/llvm-ir/
 
-using LowererError = std::variant<ScopeStackError>; //, TypeError>;
+struct CallError {
+  enum class Reason {
+    WrongNumberOfArgs,
+    ArgTypeMismatch,
+  } reason;
+  std::string description;
+};
+
+struct TypeError {
+  enum class Reason {
+    IncompatibleTypesInCmp,
+    InvalidTypesInMath,
+    TypeMismatchInAssignment,
+    ArrayAccessorIsNotInteger,
+    IncompatibleTypesInMultOp,
+    IncompatibleTypesInAddOp,
+  } reason;
+  std::string description;
+};
+
+struct AccessError {
+  enum class Reason {
+    UnsupportedAccessType,
+    WrongNumberOfArrayAccessors,
+  } reason;
+  std::string description;
+};
+
+struct NotImplementedError {
+  std::string description;
+};
+
+// Можно в будущем сделать класс IRGenerator.
+//   Он принимает в себя шаблон, на который будет хранить ссылку.
+//   Шаблонный параметр будет называться Specialization.
+//   И у него будут все эти методы, которые есть у Lowerer.
+//   И для разных IR по сути лишь специализацию заменять.
+// Интерпретатора in-place больше не будет, будет интерпретация IR.
+// Можно сделать плагин языка pascal для vscode, который будет проверять
+//   синтаксис и семантику с помощью моего компилятора. Юнитов нет, плагин
+//   поддерживает только один файл. Будет вызывать утилиту
+//   pas-typechecker, а она вызывает Typechecker visitor. Этот visitor
+//   тоже наследуется от IRGenerator, просто никакой кодогенерации не
+//   происходит, вместо дерева IR выдается std::monostate.
+
+using LowererError = std::variant<ScopeStackError, CallError, TypeError,
+                                  AccessError, NotImplementedError>;
 
 template <typename ValueType>
 using LowererErrorOr = ErrorOr<LowererError, ValueType>;
@@ -58,7 +104,8 @@ private:
   };
 
   struct Variable : public pas::ScopeStackInterface::BasicVariable {
-    llvm::AllocaInst *memory;
+    llvm::Value
+        *memory; // Always a llvm::AllocaInst* or a llvm::GlobalVariable*.
 
     void start_lifetime(llvm::Module *module, llvm::IRBuilder<> *ir_builder) {
       if (type == BasicType::String) {
@@ -93,7 +140,7 @@ private:
   using Type = pas::ScopeStackInterface::BasicType;
 
   struct Function : public pas::ScopeStackInterface::BasicFunction {
-    llvm::Function *llvm_function;
+    llvm::Function *llvm_function = nullptr;
   };
 
   using PascalIdent = std::string;
@@ -106,11 +153,29 @@ private:
   LowererErrorOr<void> declare_builtin_strio();
 
   // declaration helpers
+  //   These do not accept structs, but rather
+  //   the arguments themselves. Because they'd also
+  //   fill some fields. And usually calling don't need
+  //   that info, it'd just query scope stack, when it's
+  //   needed.
+  //   ---
+  //   Also I feel like I don't like modifying fields by reference
+  //   argument or pointer argument. Return values are better.
+  //   Or I'd do methods instead. Because it's encapsulation.
+  //   At the very least, I can make a friend function. But
+  //   such access should be hidden.
+  //   It's only about C++ and direct access. Also it's not possible
+  //   for private fields.. So it's already done. Maybe I wouldn't have
+  //   any public fields, in the first place. That's a good guideline.
+  //   - Only a reason may make me do a public field for a class (not
+  //   C-like struct, an aggregate type). Implementation should be
+  //   hidden. At least, if I have time to do that.
+  //   I need to write these guidelines for myself somewhere.
 private:
   // Creates alloca inst and stores the variable in scope stack.
-  // Returns scope stack error, if a redefinition in the same scope, for
-  // example.
-  LowererErrorOr<void> declare_var(Variable var);
+  // Returns scope stack error, if it's, for example, a redefinition
+  //   in the same scope.
+  LowererErrorOr<void> declare_var(std::string name, pas::ComputedType type);
 
   // Just store the type in scope stack.
   // Type declaration is always a definition. There's no
@@ -120,43 +185,91 @@ private:
   //   Regarding functions, there are forward declarations (will be in future).
   // Returns scope stack error, if a redefinition in the same scope, for
   // example.
-  LowererErrorOr<void> declare_type(Type type);
+  LowererErrorOr<void> declare_type(std::string name, pas::ComputedType type);
 
   // For functions we have not only to store them in scope stack,
   //   but tell llvm such a function exist, also convert pascal
   //   types to llvm ones.
-  LowererErrorOr<void> declare_func(Function func);
+  // We accept copies of computed types, because we'd copy them
+  //   anyway..
+  LowererErrorOr<void> declare_func(std::string name,
+                                    std::optional<pas::ComputedType> ret_type,
+                                    std::vector<pas::ComputedType> args = {});
 
   // evalution functions for expressions.
 private:
+  LowererErrorOr<TmpValue> eval_op_int(TmpValue lhs, pas::ast::RelOp op,
+                                       TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_bool(TmpValue lhs, pas::ast::RelOp op,
+                                        TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_char(TmpValue lhs, pas::ast::RelOp op,
+                                        TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_real(TmpValue lhs, pas::ast::RelOp op,
+                                        TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_str(TmpValue lhs, pas::ast::RelOp op,
+                                       TmpValue rhs);
+
+  LowererErrorOr<TmpValue> eval_op_record(TmpValue lhs, pas::ast::RelOp op,
+                                          TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_set(TmpValue lhs, pas::ast::RelOp op,
+                                       TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_array(TmpValue lhs, pas::ast::RelOp op,
+                                         TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_pointer(TmpValue lhs, pas::ast::RelOp op,
+                                           TmpValue rhs);
+
+  LowererErrorOr<TmpValue> eval_op_int(TmpValue lhs, pas::ast::MultOp op,
+                                       TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_bool(TmpValue lhs, pas::ast::MultOp op,
+                                        TmpValue rhs);
+
+  LowererErrorOr<TmpValue> eval_op_int(TmpValue lhs, pas::ast::AddOp op,
+                                       TmpValue rhs);
+  LowererErrorOr<TmpValue> eval_op_bool(TmpValue lhs, pas::ast::AddOp op,
+                                        TmpValue rhs);
+
+  LowererErrorOr<TmpValue> eval_not_int(TmpValue value);
+  LowererErrorOr<TmpValue> eval_not_bool(TmpValue value);
+
+  LowererErrorOr<TmpValue>
+  eval_access_str(TmpValue value, const pas::ast::DesignatorItem &item);
+  LowererErrorOr<TmpValue>
+  eval_access_record(TmpValue value, const pas::ast::DesignatorItem &item);
+  LowererErrorOr<TmpValue>
+  eval_access_set(TmpValue value, const pas::ast::DesignatorItem &item);
+  LowererErrorOr<TmpValue>
+  eval_access_array(TmpValue value, const pas::ast::DesignatorItem &item);
+  LowererErrorOr<TmpValue>
+  eval_access_pointer(TmpValue value, const pas::ast::DesignatorItem &item);
+
   // TODO: add const to all references to ast.
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::FuncCall &func_call);
-  LowererErrorOr<llvm::Value *> eval(bool value);
-  LowererErrorOr<llvm::Value *> eval(int value);
-  LowererErrorOr<llvm::Value *> eval(const std::string value);
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Nil &value);
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Negation &value);
+  LowererErrorOr<TmpValue> eval(const pas::ast::FuncCall &func_call);
+  LowererErrorOr<TmpValue> eval(bool value);
+  LowererErrorOr<TmpValue> eval(int value);
+  LowererErrorOr<TmpValue> eval(const std::string value);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Nil &value);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Negation &value);
 
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Factor &factor);
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Term &term);
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::SimpleExpr &simple_expr);
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Expr &expr);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Factor &factor);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Term &term);
+  LowererErrorOr<TmpValue> eval(const pas::ast::SimpleExpr &simple_expr);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Expr &expr);
 
-  LowererErrorOr<llvm::Value *>
-  eval_read_int(const pas::ast::FuncCall &func_call);
+  LowererErrorOr<TmpValue> eval(const pas::ast::Designator &value);
 
-  LowererErrorOr<llvm::Value *> eval(const pas::ast::Designator &value);
-
-  // visit functions for the toplevel scope.
+  // visit functions for the topmost scope.
 private:
-  LowererErrorOr<void> visit(pas::ast::CompilationUnit &cu);
-  LowererErrorOr<void> visit(pas::ast::ProgramModule &pm);
-  LowererErrorOr<void> visit_toplevel(pas::ast::Block &block);
+  LowererErrorOr<void> visit(const pas::ast::CompilationUnit &cu);
+  LowererErrorOr<void> visit(const pas::ast::ProgramModule &pm);
+  LowererErrorOr<void> visit_topmost(const pas::ast::Block &block);
 
-  // rename to visit_toplevel_*
-  LowererErrorOr<void> process_decls(pas::ast::Declarations &decls);
-  LowererErrorOr<void> process_type_def(pas::ast::TypeDef &type_def);
-  LowererErrorOr<void> process_var_decl(pas::ast::VarDecl &var_decl);
+  LowererErrorOr<void> visit_topmost(const pas::ast::Declarations &decls);
+
+  // visit functions for declarations (declares such variables in scope table).
+private:
+  LowererErrorOr<void> visit(const pas::ast::Declarations &decls);
+  LowererErrorOr<void> visit(const pas::ast::TypeDef &type_def);
+  LowererErrorOr<void> visit(const pas::ast::VarDecl &var_decl);
 
   // visit functions for statements inside a block
 private:

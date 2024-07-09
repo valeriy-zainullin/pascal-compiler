@@ -25,10 +25,12 @@ static llvm::Type *get_llvm_type(llvm::IRBuilder<> *ir_builder,
   case pas::BasicType::Char:
     return ir_builder->getInt8Ty();
   case pas::BasicType::String:
+    return ir_builder->getPtrTy(); // Pointer to std::string.
+  case pas::BasicType::StringLiteral:
     return ir_builder->getInt8Ty()->getPointerTo();
 
   default:
-    UNREACHABLE();
+    UNREACHABLE("All basic types should be handled!");
   }
 }
 

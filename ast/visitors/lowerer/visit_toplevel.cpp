@@ -1,19 +1,42 @@
-// Visit (functions for) toplevel scope
+// Visit (functions for) topmost scope
 
 #include "ast/visitors/lowerer.hpp"
 
 namespace pas {
 namespace visitor {
 
-LowererErrorOr<void> Lowerer::visit(pas::ast::CompilationUnit &cu) {
+LowererErrorOr<void> Lowerer::visit(const pas::ast::CompilationUnit &cu) {
   return visit(cu.pm_);
 }
 
-LowererErrorOr<void> Lowerer::visit(pas::ast::ProgramModule &pm) {
-  return visit_toplevel(pm.block_);
+LowererErrorOr<void> Lowerer::visit(const pas::ast::ProgramModule &pm) {
+  return visit_topmost(pm.block_);
 }
 
-LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
+// TODO: replace topmost with topmost. Toplevel is just parent scope,
+//   but topmost is the very first scope!
+
+LowererErrorOr<void>
+Lowerer::visit_topmost(const pas::ast::Declarations &decls) {
+  // Do what visit_decls does: preform declarations in scope.
+  //   But also allow function declarations, which are only possible at
+  //   global (topmost) scope.
+
+  if (!decls.const_defs_.empty()) {
+    throw pas::NotImplementedException("const defs are not implemented yet");
+  }
+  for (const auto &type_def : decls.type_defs_) {
+    TRY(visit(type_def));
+  }
+  for (const auto &var_decl : decls.var_decls_) {
+    TRY(visit(var_decl));
+  }
+
+  // TODO: handle function declarations.
+  return {};
+}
+
+LowererErrorOr<void> Lowerer::visit_topmost(const pas::ast::Block &block) {
   // Заводим глобальное пространство имен.
   scopes_.push_scope();
 
@@ -24,21 +47,17 @@ LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
   //   no actual decls inside.
   assert(block.decls_.get() != nullptr);
 
-  if (!block.decls_->subprog_decls_.empty()) {
-    throw pas::NotImplementedException(
-        "function decls are not implemented yet");
-  }
-  if (!block.decls_->const_defs_.empty()) {
-    throw pas::NotImplementedException("const defs are not implemented yet");
-  }
+  // These are actually global variables and function decls,
+  //   not main function variables. It's what's different
+  //   about topmost block in comparison to blocks
+  //   of functions.
+  visit_topmost(*block.decls_);
 
   // All subfunctions were generated, let's codegen the main function.
 
-  llvm::IRBuilder<> main_func_builder(context_);
-
   // declare void @main()
   llvm::FunctionType *main_func_type =
-      llvm::FunctionType::get(main_func_builder.getInt32Ty(), false);
+      llvm::FunctionType::get(ir_builder_->getInt32Ty(), false);
   // Create links object to parent. So it's deleted along with the parent.
   //   Won't free it in any specific way. It's a good think to have create.
   //   We didn't allocate with new, so we don't free it with delete. It's
@@ -50,17 +69,9 @@ LowererErrorOr<void> Lowerer::visit_toplevel(pas::ast::Block &block) {
 
   // entrypoint:
   auto entry = llvm::BasicBlock::Create(context_, "entrypoint", main_func);
-  main_func_builder.SetInsertPoint(entry);
+  ir_builder_->SetInsertPoint(entry);
 
   current_func_ = main_func;
-  ir_builder_ = &main_func_builder;
-
-  for (auto &type_def : block.decls_->type_defs_) {
-    TRY(process_type_def(type_def));
-  }
-  for (auto &var_decl : block.decls_->var_decls_) {
-    TRY(process_var_decl(var_decl));
-  }
 
   TRY(visit(block.stmt_seq_));
 
